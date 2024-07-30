@@ -1,0 +1,8 @@
+node_modules/
+target/
+.dfx/
+.mops/
+
+*.generated.did
+*.wasm
+*.wasm.gz
