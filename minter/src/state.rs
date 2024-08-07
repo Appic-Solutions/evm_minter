@@ -2,8 +2,14 @@ use std::cell::RefCell;
 
 use candid::Principal;
 
-use crate::{eth_types::Address, lifecycles::EvmNetwork, numeric::BlockNumber};
+use crate::{
+    eth_types::Address, lifecycles::EvmNetwork, numeric::BlockNumber, rpc_declrations::BlockTag,
+};
 use ic_cdk::api::management_canister::ecdsa::EcdsaPublicKeyResponse;
+
+thread_local! {
+    pub static STATE:RefCell<Option<State>>=RefCell::default();
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct State {
@@ -13,7 +19,7 @@ pub struct State {
     pub helper_contract_address: Option<Address>,
     pub ecdsa_public_key: Option<EcdsaPublicKeyResponse>,
     // pub cketh_minimum_withdrawal_amount: Wei,
-    // pub block_height: BlockTag,
+    pub block_height: BlockTag,
     pub first_scraped_block_number: BlockNumber,
     pub last_scraped_block_number: BlockNumber,
     pub last_observed_block_number: Option<BlockNumber>,
@@ -57,6 +63,27 @@ pub struct State {
     // /// - value: ckERC20 token symbol
     // pub ckerc20_tokens: DedupMultiKeyMap<Principal, Address, CkTokenSymbol>
 }
-thread_local! {
-    pub static state:RefCell<Option<State>>=RefCell::default();
+
+impl State {
+    // Returns the blockcheight
+    pub const fn block_height(&self) -> BlockTag {
+        self.block_height
+    }
+}
+pub fn read_state<R>(f: impl FnOnce(&State) -> R) -> R {
+    STATE.with(|s| f(s.borrow().as_ref().expect("BUG: state is not initialized")))
+}
+
+/// Mutates (part of) the current state using `f`.
+///
+/// Panics if there is no state.
+pub fn mutate_state<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut State) -> R,
+{
+    STATE.with(|s| {
+        f(s.borrow_mut()
+            .as_mut()
+            .expect("BUG: state is not initialized"))
+    })
 }
