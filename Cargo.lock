@@ -497,6 +497,7 @@ dependencies = [
  "assert_matches",
  "candid",
  "ethnum",
+ "evm_rpc_client",
  "hex",
  "ic-canister-log",
  "ic-cdk",

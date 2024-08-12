@@ -3,6 +3,8 @@ mod checked_amount;
 mod deposit;
 mod eth_types;
 mod lifecycles;
+mod logs;
 mod numeric;
+mod rpc_client;
 mod rpc_declrations;
 mod state;

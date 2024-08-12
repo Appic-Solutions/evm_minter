@@ -17,6 +17,7 @@ pub struct State {
     pub ecdsa_key_name: String,
     pub native_twin_ledger_id: Principal,
     pub helper_contract_address: Option<Address>,
+    pub evm_canister_id: Principal,
     pub ecdsa_public_key: Option<EcdsaPublicKeyResponse>,
     // pub cketh_minimum_withdrawal_amount: Wei,
     pub block_height: BlockTag,
