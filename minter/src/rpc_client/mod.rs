@@ -1,10 +1,16 @@
+use std::collections::BTreeMap;
+
 use crate::{
     lifecycles::EvmNetwork,
     logs::{PrintProxySink, DEBUG, INFO, TRACE_HTTP},
+    rpc_declrations::{GetLogsParam, LogEntry},
     state::State,
 };
 use evm_rpc_client::{
-    types::candid::{EthSepoliaService, RpcConfig as EvmRpcConfig, RpcServices},
+    types::candid::{
+        EthSepoliaService, HttpOutcallError, MultiRpcResult as EvmMultiRpcResult,
+        RpcConfig as EvmRpcConfig, RpcError as EvmRpcError, RpcServices,
+    },
     CallerService, EvmRpcClient, OverrideRpcConfig,
 };
 // We expect most of the calls to contain zero events.
@@ -51,4 +57,57 @@ impl RpcClient {
 
         client
     }
+
+    // pub fn get_logs(
+    //     &self,
+    //     params: GetLogsParam,
+    // ) -> Result<Vec<LogEntry>, MultiCallError<Vec<LogEntry>>> {
+    // }
+}
+
+/// Aggregates responses of different providers to the same query.
+/// Guaranteed to be non-empty.
+// #[derive(Debug, Clone, PartialEq, Eq)]
+// pub struct MultiCallResults<T> {
+//     ok_results: BTreeMap<RpcNodeProvider, T>,
+//     errors: BTreeMap<RpcNodeProvider, SingleCallError>,
+// }
+
+#[derive(Debug, PartialEq, Eq, Clone, Ord, PartialOrd)]
+pub enum SingleCallError {
+    HttpOutcallError(HttpOutcallError),
+    JsonRpcError { code: i64, message: String },
+    EvmRpcError(String),
+}
+
+impl From<EvmRpcError> for SingleCallError {
+    fn from(value: EvmRpcError) -> Self {
+        match value {
+            EvmRpcError::ProviderError(e) => SingleCallError::EvmRpcError(e.to_string()),
+            EvmRpcError::HttpOutcallError(e) => SingleCallError::HttpOutcallError(e.into()),
+            EvmRpcError::JsonRpcError(e) => SingleCallError::JsonRpcError {
+                code: e.code,
+                message: e.message,
+            },
+            EvmRpcError::ValidationError(e) => SingleCallError::EvmRpcError(e.to_string()),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum MultiCallError<T> {
+    ConsistentHttpOutcallError(HttpOutcallError),
+    ConsistentJsonRpcError { code: i64, message: String },
+    ConsistentEvmRpcCanisterError(String),
+    InconsistentResults(T),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ReducedResult<T> {
+    result: Result<T, MultiCallError<T>>,
+}
+
+trait Reduce {
+    type Item;
+    fn reduce(self) -> ReducedResult<Self::Item>;
 }
