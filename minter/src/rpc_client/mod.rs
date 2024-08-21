@@ -95,16 +95,45 @@ impl From<EvmRpcError> for SingleCallError {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum MultiCallError<T> {
+pub enum MultiCallError {
     ConsistentHttpOutcallError(HttpOutcallError),
     ConsistentJsonRpcError { code: i64, message: String },
     ConsistentEvmRpcCanisterError(String),
-    InconsistentResults(T),
+    InconsistentResults(String),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ReducedResult<T> {
-    result: Result<T, MultiCallError<T>>,
+    result: Result<T, MultiCallError>,
+}
+
+impl<T> ReducedResult<T> {
+    pub fn from_multi_result(value: EvmMultiRpcResult<T>) -> Self {
+        let result = match value {
+            EvmMultiRpcResult::Consistent(result) => match result {
+                Ok(t) => Ok(t),
+                Err(e) => match e {
+                    EvmRpcError::ProviderError(e) => {
+                        Err(MultiCallError::ConsistentEvmRpcCanisterError(e.to_string()))
+                    }
+                    EvmRpcError::HttpOutcallError(e) => {
+                        Err(MultiCallError::ConsistentHttpOutcallError(e.into()))
+                    }
+                    EvmRpcError::JsonRpcError(e) => Err(MultiCallError::ConsistentJsonRpcError {
+                        code: e.code,
+                        message: e.message,
+                    }),
+                    EvmRpcError::ValidationError(e) => {
+                        Err(MultiCallError::ConsistentEvmRpcCanisterError(e.to_string()))
+                    }
+                },
+            },
+            EvmMultiRpcResult::Inconsistent(result) => {
+                Err(MultiCallError::InconsistentResults("".to_string()))
+            }
+        };
+        Self { result }
+    }
 }
 
 trait Reduce {
