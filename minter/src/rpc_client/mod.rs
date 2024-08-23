@@ -1,15 +1,19 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
 use crate::{
+    checked_amount::CheckedAmountOf,
+    eth_types::Address,
     lifecycles::EvmNetwork,
     logs::{PrintProxySink, DEBUG, INFO, TRACE_HTTP},
-    rpc_declrations::{GetLogsParam, LogEntry},
+    numeric::{BlockNumber, LogIndex},
+    rpc_declrations::{Data, FixedSizeData, GetLogsParam, Hash, LogEntry},
     state::State,
 };
 use evm_rpc_client::{
     types::candid::{
-        EthSepoliaService, HttpOutcallError, MultiRpcResult as EvmMultiRpcResult,
-        RpcConfig as EvmRpcConfig, RpcError as EvmRpcError, RpcServices,
+        EthSepoliaService, HttpOutcallError, LogEntry as EvmLogEntry,
+        MultiRpcResult as EvmMultiRpcResult, RpcConfig as EvmRpcConfig, RpcError as EvmRpcError,
+        RpcResult as EvmRpcResult, RpcService as EvmRpcService, RpcServices as EvmRpcServices,
     },
     CallerService, EvmRpcClient, OverrideRpcConfig,
 };
@@ -37,7 +41,7 @@ impl RpcClient {
         const MIN_ATTACHED_CYCLES: u128 = 300_000_000_000;
 
         // TODO: Add afunction to chose custom providers based on the chainid
-        let providers = RpcServices::EthSepolia(Some(vec![EthSepoliaService::Alchemy]));
+        let providers = EvmRpcServices::EthSepolia(Some(vec![EthSepoliaService::Alchemy]));
 
         client.evm_rpc_client = Some(
             EvmRpcClient::builder(CallerService {}, TRACE_HTTP)
@@ -95,19 +99,52 @@ impl From<EvmRpcError> for SingleCallError {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum MultiCallError {
+pub enum MultiCallError<T> {
     ConsistentHttpOutcallError(HttpOutcallError),
     ConsistentJsonRpcError { code: i64, message: String },
     ConsistentEvmRpcCanisterError(String),
-    InconsistentResults(String),
+    InconsistentResults(Vec<(EvmRpcService, EvmRpcResult<T>)>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ReducedResult<T> {
-    result: Result<T, MultiCallError>,
+    result: Result<T, MultiCallError<T>>,
 }
 
 impl<T> ReducedResult<T> {
+    /// Transform a `ReducedResult<T>` into a `ReducedResult<U>` by applying a mapping function `F`.
+    /// The mapping function is also applied to the elements contained in the error `MultiCallError::InconsistentResults`,
+    /// which depending on the mapping function could lead to the mapped results no longer being inconsistent.
+    /// The final result in that case is given by applying the reduction function `R` to the mapped results.
+    pub fn map_reduce<
+        U,
+        E: Display,
+        F: Fn(T) -> Result<U, E>,
+        R: FnOnce(Vec<(EvmRpcService, EvmRpcResult<T>)>) -> Result<U, MultiCallError<U>>,
+    >(
+        self,
+        fallible_op: &F,
+        reduction: R,
+    ) -> ReducedResult<U> {
+        let result = match self.result {
+            Ok(t) => fallible_op(t)
+                .map_err(|e| MultiCallError::<U>::ConsistentEvmRpcCanisterError(e.to_string())),
+            Err(MultiCallError::ConsistentHttpOutcallError(e)) => {
+                Err(MultiCallError::<U>::ConsistentHttpOutcallError(e))
+            }
+            Err(MultiCallError::ConsistentJsonRpcError { code, message }) => {
+                Err(MultiCallError::<U>::ConsistentJsonRpcError { code, message })
+            }
+            Err(MultiCallError::ConsistentEvmRpcCanisterError(e)) => {
+                Err(MultiCallError::<U>::ConsistentEvmRpcCanisterError(e))
+            }
+
+            // TODO: Fix the reduction function.
+            Err(MultiCallError::InconsistentResults(results)) => reduction(results),
+        };
+        ReducedResult { result }
+    }
+
     pub fn from_multi_result(value: EvmMultiRpcResult<T>) -> Self {
         let result = match value {
             EvmMultiRpcResult::Consistent(result) => match result {
@@ -129,7 +166,7 @@ impl<T> ReducedResult<T> {
                 },
             },
             EvmMultiRpcResult::Inconsistent(result) => {
-                Err(MultiCallError::InconsistentResults("".to_string()))
+                Err(MultiCallError::InconsistentResults(result))
             }
         };
         Self { result }
@@ -139,4 +176,40 @@ impl<T> ReducedResult<T> {
 trait Reduce {
     type Item;
     fn reduce(self) -> ReducedResult<Self::Item>;
+}
+
+impl Reduce for EvmMultiRpcResult<Vec<EvmLogEntry>> {
+    type Item = Vec<LogEntry>;
+
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        fn map_logs(logs: Vec<EvmLogEntry>) -> Result<Vec<LogEntry>, String> {
+            logs.into_iter().map(map_single_log).collect()
+        }
+
+        fn map_single_log(log: EvmLogEntry) -> Result<LogEntry, String> {
+            Ok(LogEntry {
+                address: Address::from_str(&log.address)?,
+                topics: log
+                    .topics
+                    .into_iter()
+                    .map(|t| FixedSizeData::from_str(&t))
+                    .collect::<Result<_, _>>()?,
+                data: Data::from_str(&log.data)?,
+                block_number: log.block_number.map(BlockNumber::try_from).transpose()?,
+                transaction_hash: log
+                    .transaction_hash
+                    .as_deref()
+                    .map(Hash::from_str)
+                    .transpose()?,
+                transaction_index: log
+                    .transaction_index
+                    .map(|i| CheckedAmountOf::<()>::try_from(i).map(|c| c.into_inner()))
+                    .transpose()?,
+                block_hash: log.block_hash.as_deref().map(Hash::from_str).transpose()?,
+                log_index: log.log_index.map(LogIndex::try_from).transpose()?,
+                removed: log.removed,
+            })
+        }
+        let reduced: ReducedResult<Vec<EvmLogEntry>> = ReducedResult::from_multi_result(self);
+    }
 }
