@@ -9,6 +9,8 @@ use crate::{
     rpc_declrations::{Data, FixedSizeData, GetLogsParam, Hash, LogEntry},
     state::State,
 };
+use ic_canister_log::log;
+
 use evm_rpc_client::{
     types::candid::{
         EthSepoliaService, HttpOutcallError, LogEntry as EvmLogEntry,
@@ -17,6 +19,7 @@ use evm_rpc_client::{
     },
     CallerService, EvmRpcClient, OverrideRpcConfig,
 };
+use serde_json::error;
 // We expect most of the calls to contain zero events.
 const ETH_GET_LOGS_INITIAL_RESPONSE_SIZE_ESTIMATE: u64 = 100;
 
@@ -103,7 +106,7 @@ pub enum MultiCallError<T> {
     ConsistentHttpOutcallError(HttpOutcallError),
     ConsistentJsonRpcError { code: i64, message: String },
     ConsistentEvmRpcCanisterError(String),
-    InconsistentResults(Vec<(EvmRpcService, EvmRpcResult<T>)>),
+    InconsistentResults(Vec<(EvmRpcService, Result<T, SingleCallError>)>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -111,7 +114,7 @@ pub struct ReducedResult<T> {
     result: Result<T, MultiCallError<T>>,
 }
 
-impl<T> ReducedResult<T> {
+impl<T: std::fmt::Debug> ReducedResult<T> {
     /// Transform a `ReducedResult<T>` into a `ReducedResult<U>` by applying a mapping function `F`.
     /// The mapping function is also applied to the elements contained in the error `MultiCallError::InconsistentResults`,
     /// which depending on the mapping function could lead to the mapped results no longer being inconsistent.
@@ -120,11 +123,11 @@ impl<T> ReducedResult<T> {
         U,
         E: Display,
         F: Fn(T) -> Result<U, E>,
-        R: FnOnce(Vec<(EvmRpcService, EvmRpcResult<T>)>) -> Result<U, MultiCallError<U>>,
+        // R: FnOnce(Vec<(EvmRpcService, EvmRpcResult<T>)>) -> Result<U, MultiCallError<U>>,
     >(
         self,
         fallible_op: &F,
-        reduction: R,
+        // reduction: R,
     ) -> ReducedResult<U> {
         let result = match self.result {
             Ok(t) => fallible_op(t)
@@ -139,8 +142,22 @@ impl<T> ReducedResult<T> {
                 Err(MultiCallError::<U>::ConsistentEvmRpcCanisterError(e))
             }
 
-            // TODO: Fix the reduction function.
-            Err(MultiCallError::InconsistentResults(results)) => reduction(results),
+            Err(MultiCallError::InconsistentResults(results)) => {
+                let mapped_inconsistent_results = results
+                    .into_iter()
+                    .map(|(rpc_service, response)| {
+                        let mapped_response = match response {
+                            Ok(inconsistent_response) => fallible_op(inconsistent_response)
+                                .map_err(|e| SingleCallError::EvmRpcError(e.to_string())),
+                            Err(error) => Err(error),
+                        };
+                        return (rpc_service, mapped_response);
+                    })
+                    .collect();
+                Err(MultiCallError::<U>::InconsistentResults(
+                    mapped_inconsistent_results,
+                ))
+            }
         };
         ReducedResult { result }
     }
@@ -166,10 +183,41 @@ impl<T> ReducedResult<T> {
                 },
             },
             EvmMultiRpcResult::Inconsistent(result) => {
-                Err(MultiCallError::InconsistentResults(result))
+                let converted_to_single_call_erro = result
+                    .into_iter()
+                    .map(|(rpc_provider, rpc_result)| {
+                        let mapped_rpc_result = match rpc_result {
+                            Ok(ok_response) => Ok(ok_response),
+                            Err(rpc_error) => Err(SingleCallError::from(rpc_error)),
+                        };
+                        (rpc_provider, mapped_rpc_result)
+                    })
+                    .collect();
+
+                Err(MultiCallError::InconsistentResults(
+                    converted_to_single_call_erro,
+                ))
+                // Err(MultiCallError::InconsistentResults(result))
             }
         };
         Self { result }
+    }
+
+    pub fn reduce_with_equality(self) -> Self {
+        match self.result {
+            Ok(_) => (),
+            Err(ref multi_error) => match multi_error {
+                MultiCallError::InconsistentResults(inconsistent_result) => {
+                    log!(
+                        INFO,
+                        "[reduce_with_equality]: inconsistent results {inconsistent_result:?}"
+                    );
+                    ()
+                }
+                _ => (),
+            },
+        };
+        self
     }
 }
 
@@ -210,6 +258,9 @@ impl Reduce for EvmMultiRpcResult<Vec<EvmLogEntry>> {
                 removed: log.removed,
             })
         }
-        let reduced: ReducedResult<Vec<EvmLogEntry>> = ReducedResult::from_multi_result(self);
+        let mapped_logs = ReducedResult::from_multi_result(self)
+            .reduce_with_equality()
+            .map_reduce(&map_logs);
+        mapped_logs
     }
 }
