@@ -5,17 +5,21 @@ use crate::{
     eth_types::Address,
     lifecycles::EvmNetwork,
     logs::{PrintProxySink, DEBUG, INFO, TRACE_HTTP},
-    numeric::{BlockNumber, LogIndex},
-    rpc_declrations::{Data, FixedSizeData, GetLogsParam, Hash, LogEntry},
+    numeric::{BlockNumber, LogIndex, Wei},
+    rpc_declrations::{
+        Block, BlockSpec, BlockTag, Data, FixedSizeData, GetLogsParam, Hash, LogEntry, Topic,
+    },
     state::State,
 };
 use ic_canister_log::log;
 
 use evm_rpc_client::{
     types::candid::{
-        EthSepoliaService, HttpOutcallError, LogEntry as EvmLogEntry,
-        MultiRpcResult as EvmMultiRpcResult, RpcConfig as EvmRpcConfig, RpcError as EvmRpcError,
-        RpcResult as EvmRpcResult, RpcService as EvmRpcService, RpcServices as EvmRpcServices,
+        Block as EvmBlock, BlockTag as EvmBlockTag, EthSepoliaService, FeeHistory as EvmFeeHistory,
+        FeeHistoryArgs as EvmFeeHistoryArgs, GetLogsArgs as EvmGetLogsArgs, HttpOutcallError,
+        LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult, RpcConfig as EvmRpcConfig,
+        RpcError as EvmRpcError, RpcResult as EvmRpcResult, RpcService as EvmRpcService,
+        RpcServices as EvmRpcServices,
     },
     CallerService, EvmRpcClient, OverrideRpcConfig,
 };
@@ -65,20 +69,45 @@ impl RpcClient {
         client
     }
 
-    // pub fn get_logs(
-    //     &self,
-    //     params: GetLogsParam,
-    // ) -> Result<Vec<LogEntry>, MultiCallError<Vec<LogEntry>>> {
-    // }
-}
+    pub async fn get_logs(
+        &self,
+        params: GetLogsParam,
+    ) -> Result<Vec<LogEntry>, MultiCallError<Vec<LogEntry>>> {
+        if let Some(evm_rpc_client) = &self.evm_rpc_client {
+            let result = evm_rpc_client
+                .eth_get_logs(EvmGetLogsArgs {
+                    from_block: Some(into_evm_block_tag(params.from_block)),
+                    to_block: Some(into_evm_block_tag(params.to_block)),
+                    addresses: params.address.into_iter().map(|a| a.to_string()).collect(),
+                    topics: Some(into_evm_topic(params.topics)),
+                })
+                .await
+                .reduce();
+            return result.result;
+        } else {
+            Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
+                "EVM RPC canister can not be None",
+            )))
+        }
+    }
 
-/// Aggregates responses of different providers to the same query.
-/// Guaranteed to be non-empty.
-// #[derive(Debug, Clone, PartialEq, Eq)]
-// pub struct MultiCallResults<T> {
-//     ok_results: BTreeMap<RpcNodeProvider, T>,
-//     errors: BTreeMap<RpcNodeProvider, SingleCallError>,
-// }
+    pub async fn get_block_by_number(
+        &self,
+        block: BlockSpec,
+    ) -> Result<Block, MultiCallError<Block>> {
+        if let Some(evm_rpc_client) = &self.evm_rpc_client {
+            let result = evm_rpc_client
+                .eth_get_block_by_number(into_evm_block_tag(block))
+                .await
+                .reduce();
+            return result.result;
+        } else {
+            Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
+                "EVM RPC canister can not be None",
+            )))
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Ord, PartialOrd)]
 pub enum SingleCallError {
@@ -112,6 +141,18 @@ pub enum MultiCallError<T> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ReducedResult<T> {
     result: Result<T, MultiCallError<T>>,
+}
+
+impl<T> From<Result<T, MultiCallError<T>>> for ReducedResult<T> {
+    fn from(result: Result<T, MultiCallError<T>>) -> Self {
+        Self { result }
+    }
+}
+
+impl<T> From<ReducedResult<T>> for Result<T, MultiCallError<T>> {
+    fn from(value: ReducedResult<T>) -> Self {
+        value.result
+    }
 }
 
 impl<T: std::fmt::Debug> ReducedResult<T> {
@@ -226,6 +267,21 @@ trait Reduce {
     fn reduce(self) -> ReducedResult<Self::Item>;
 }
 
+impl Reduce for EvmMultiRpcResult<EvmBlock> {
+    type Item = Block;
+
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        ReducedResult::from_multi_result(self)
+            .reduce_with_equality()
+            .map_reduce(&|block: EvmBlock| {
+                Ok::<Block, String>(Block {
+                    number: BlockNumber::try_from(block.number)?,
+                    base_fee_per_gas: Wei::try_from(block.base_fee_per_gas)?,
+                })
+            })
+    }
+}
+
 impl Reduce for EvmMultiRpcResult<Vec<EvmLogEntry>> {
     type Item = Vec<LogEntry>;
 
@@ -263,4 +319,26 @@ impl Reduce for EvmMultiRpcResult<Vec<EvmLogEntry>> {
             .map_reduce(&map_logs);
         mapped_logs
     }
+}
+
+fn into_evm_block_tag(block: BlockSpec) -> EvmBlockTag {
+    match block {
+        BlockSpec::Number(n) => EvmBlockTag::Number(n.into()),
+        BlockSpec::Tag(BlockTag::Latest) => EvmBlockTag::Latest,
+        BlockSpec::Tag(BlockTag::Safe) => EvmBlockTag::Safe,
+        BlockSpec::Tag(BlockTag::Finalized) => EvmBlockTag::Finalized,
+    }
+}
+
+fn into_evm_topic(topics: Vec<Topic>) -> Vec<Vec<String>> {
+    let mut result = Vec::with_capacity(topics.len());
+    for topic in topics {
+        result.push(match topic {
+            Topic::Single(single_topic) => vec![single_topic.to_string()],
+            Topic::Multiple(multiple_topic) => {
+                multiple_topic.into_iter().map(|t| t.to_string()).collect()
+            }
+        });
+    }
+    result
 }

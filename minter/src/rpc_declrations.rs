@@ -6,7 +6,7 @@ use std::fmt;
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 
 use crate::eth_types::Address;
-use crate::numeric::{BlockNumber, LogIndex};
+use crate::numeric::{BlockNumber, LogIndex, Wei};
 
 pub type Quantity = ethnum::u256;
 
@@ -293,4 +293,13 @@ pub struct LogEntry {
     /// "false" if it's a valid log.
     #[serde(default)]
     pub removed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Block {
+    ///The block number. `None` when its pending block.
+    pub number: BlockNumber,
+    /// Base fee value of this block
+    pub base_fee_per_gas: Wei,
 }
