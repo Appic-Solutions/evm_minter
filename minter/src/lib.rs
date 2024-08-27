@@ -1,7 +1,9 @@
 mod cbor;
-mod checked_amount;
+pub mod checked_amount;
 mod deposit;
+mod deposit_logs;
 mod eth_types;
+mod guard;
 mod lifecycles;
 mod logs;
 mod numeric;

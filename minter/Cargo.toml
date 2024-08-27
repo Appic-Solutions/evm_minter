@@ -33,3 +33,8 @@ minicbor-derive = "0.13.0"
 
 proptest="1.4.0"
 assert_matches = "1.5.0"
+
+
+
+thiserror ="1.0.62"
+

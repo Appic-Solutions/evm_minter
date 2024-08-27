@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashSet};
 
 use candid::Principal;
 
@@ -40,10 +40,8 @@ pub struct State {
 
     // /// Per-principal lock for pending withdrawals
     // pub pending_withdrawal_principals: BTreeSet<Principal>,
-
-    // /// Locks preventing concurrent execution timer tasks
-    // pub active_tasks: HashSet<TaskType>,
-
+    /// Locks preventing concurrent execution timer tasks
+    pub active_tasks: HashSet<TaskType>,
     // /// Number of HTTP outcalls since the last upgrade.
     // /// Used to correlate request and response in logs.
     // pub http_request_counter: u64,
@@ -70,6 +68,12 @@ impl State {
     pub const fn block_height(&self) -> BlockTag {
         self.block_height
     }
+
+    pub fn max_block_spread_for_logs_scraping(&self) -> u16 {
+        // Limit set by the EVM-RPC canister itself, see
+        // https://github.com/internet-computer-protocol/evm-rpc-canister/blob/3cce151d4c1338d83e6741afa354ccf11dff41e8/src/candid_rpc.rs#L192
+        500_u16
+    }
 }
 pub fn read_state<R>(f: impl FnOnce(&State) -> R) -> R {
     STATE.with(|s| f(s.borrow().as_ref().expect("BUG: state is not initialized")))
@@ -87,4 +91,14 @@ where
             .as_mut()
             .expect("BUG: state is not initialized"))
     })
+}
+
+#[derive(Debug, Hash, Copy, Clone, PartialEq, Eq)]
+pub enum TaskType {
+    Mint,
+    // RetrieveEth,
+    ScrapLogs,
+    RefreshGasFeeEstimate,
+    // Reimbursement,
+    // MintCkErc20,
 }

@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
 use crate::{
@@ -47,7 +50,7 @@ impl RpcClient {
         };
         const MIN_ATTACHED_CYCLES: u128 = 300_000_000_000;
 
-        // TODO: Add afunction to chose custom providers based on the chainid
+        // TODO: Add a function to chose custom providers based on the chainid
         let providers = EvmRpcServices::EthSepolia(Some(vec![EthSepoliaService::Alchemy]));
 
         client.evm_rpc_client = Some(
@@ -157,15 +160,9 @@ impl<T> From<ReducedResult<T>> for Result<T, MultiCallError<T>> {
 
 impl<T: std::fmt::Debug> ReducedResult<T> {
     /// Transform a `ReducedResult<T>` into a `ReducedResult<U>` by applying a mapping function `F`.
-    /// The mapping function is also applied to the elements contained in the error `MultiCallError::InconsistentResults`,
-    /// which depending on the mapping function could lead to the mapped results no longer being inconsistent.
-    /// The final result in that case is given by applying the reduction function `R` to the mapped results.
-    pub fn map_reduce<
-        U,
-        E: Display,
-        F: Fn(T) -> Result<U, E>,
-        // R: FnOnce(Vec<(EvmRpcService, EvmRpcResult<T>)>) -> Result<U, MultiCallError<U>>,
-    >(
+    /// The mapping function is also applied to the elements contained in the error `MultiCallError::InconsistentResults`.
+
+    pub fn map_reduce<U, E: Display, F: Fn(T) -> Result<U, E>>(
         self,
         fallible_op: &F,
         // reduction: R,
@@ -244,6 +241,8 @@ impl<T: std::fmt::Debug> ReducedResult<T> {
         Self { result }
     }
 
+    // Reduce the inconsistent result with the starategy that if there is even ingle inconsistent resposne,
+    // the new reduced result will be an inconsistent multierror call type.
     pub fn reduce_with_equality(self) -> Self {
         match self.result {
             Ok(_) => (),
