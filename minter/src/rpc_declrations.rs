@@ -191,6 +191,11 @@ impl Default for BlockSpec {
     }
 }
 
+impl From<BlockNumber> for BlockSpec {
+    fn from(value: BlockNumber) -> Self {
+        BlockSpec::Number(value)
+    }
+}
 impl std::str::FromStr for BlockSpec {
     type Err = String;
 

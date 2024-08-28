@@ -1,9 +1,12 @@
+mod test;
+
 use std::fmt;
 
 use crate::eth_types::Address;
 use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
 use crate::rpc_client::{MultiCallError, RpcClient};
 use crate::rpc_declrations::{FixedSizeData, Hash, LogEntry};
+use crate::state::read_state;
 use candid::Principal;
 use minicbor::{Decode, Encode};
 use thiserror::Error;
@@ -158,7 +161,7 @@ impl ReceivedDepositEvent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReceivedEventError {
+pub enum ReceivedDepsitEventError {
     PendingLogEntry,
     InvalidEventSource {
         source: EventSource,
@@ -174,30 +177,84 @@ pub enum EventSourceError {
     InvalidEvent(String),
 }
 
+// Fetches deposit logs by creating an instance of RPClient from state
+// and calling the get_logs function
+pub async fn last_received_deposit_events(
+    topic: &[u8; 32],
+    contract_address: Address,
+    token_contract_addresses: &[Address],
+    from: BlockNumber,
+    to: BlockNumber,
+) -> Result<(Vec<ReceivedDepositEvent>, Vec<ReceivedDepsitEventError>), MultiCallError<Vec<LogEntry>>>
+{
+    use crate::rpc_declrations::GetLogsParam;
+
+    if from > to {
+        ic_cdk::trap(&format!(
+            "BUG: invalid block range. {:?} should not be greater than {:?}",
+            from, to
+        ));
+    }
+    let mut topics: Vec<_> = vec![FixedSizeData(*topic).into()];
+    // We add token contract addresses as additional topics to match.
+    // It has a disjunction semantics, so it will match if event matches any one of these addresses.
+    if !token_contract_addresses.is_empty() {
+        topics.push(
+            token_contract_addresses
+                .iter()
+                .map(|address| FixedSizeData(address.into()))
+                .collect::<Vec<_>>()
+                .into(),
+        )
+    }
+
+    let result = read_state(RpcClient::from_state)
+        .get_logs(GetLogsParam {
+            from_block: from.into(),
+            to_block: to.into(),
+            address: vec![contract_address],
+            topics,
+        })
+        .await?;
+
+    let (ok, not_ok): (Vec<_>, Vec<_>) = result
+        .into_iter()
+        .map(ReceivedDepositEvent::try_from)
+        .partition(Result::is_ok);
+    let valid_transactions: Vec<ReceivedDepositEvent> =
+        ok.into_iter().map(Result::unwrap).collect();
+    let errors: Vec<ReceivedDepsitEventError> =
+        not_ok.into_iter().map(Result::unwrap_err).collect();
+    Ok((valid_transactions, errors))
+}
+
+// Converts LogEntry to ReceivedDepsitEvent
 impl TryFrom<LogEntry> for ReceivedDepositEvent {
-    type Error = ReceivedEventError;
+    type Error = ReceivedDepsitEventError;
 
     fn try_from(entry: LogEntry) -> Result<Self, Self::Error> {
         let _block_hash = entry
             .block_hash
-            .ok_or(ReceivedEventError::PendingLogEntry)?;
+            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
         let block_number = entry
             .block_number
-            .ok_or(ReceivedEventError::PendingLogEntry)?;
+            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
         let transaction_hash = entry
             .transaction_hash
-            .ok_or(ReceivedEventError::PendingLogEntry)?;
+            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
         let _transaction_index = entry
             .transaction_index
-            .ok_or(ReceivedEventError::PendingLogEntry)?;
-        let log_index = entry.log_index.ok_or(ReceivedEventError::PendingLogEntry)?;
+            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
+        let log_index = entry
+            .log_index
+            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
         let event_source = EventSource {
             transaction_hash,
             log_index,
         };
 
         if entry.removed {
-            return Err(ReceivedEventError::InvalidEventSource {
+            return Err(ReceivedDepsitEventError::InvalidEventSource {
                 source: event_source,
                 error: EventSourceError::InvalidEvent(
                     "this event has been removed from the chain".to_string(),
@@ -205,8 +262,8 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
             });
         }
 
-        let parse_address = |address: &[u8; 32]| -> Result<Address, ReceivedEventError> {
-            Address::try_from(address).map_err(|err| ReceivedEventError::InvalidEventSource {
+        let parse_address = |address: &[u8; 32]| -> Result<Address, ReceivedDepsitEventError> {
+            Address::try_from(address).map_err(|err| ReceivedDepsitEventError::InvalidEventSource {
                 source: event_source,
                 error: EventSourceError::InvalidEvent(format!(
                     "Invalid address in log entry: {}",
@@ -215,20 +272,21 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
             })
         };
 
-        let parse_principal = |principal: &FixedSizeData| -> Result<Principal, ReceivedEventError> {
-            parse_principal_from_slice(&principal.0).map_err(|_err| {
-                ReceivedEventError::InvalidEventSource {
-                    source: event_source,
-                    error: EventSourceError::InvalidPrincipal {
-                        invalid_principal: principal.clone(),
-                    },
-                }
-            })
-        };
+        let parse_principal =
+            |principal: &FixedSizeData| -> Result<Principal, ReceivedDepsitEventError> {
+                parse_principal_from_slice(&principal.0).map_err(|_err| {
+                    ReceivedDepsitEventError::InvalidEventSource {
+                        source: event_source,
+                        error: EventSourceError::InvalidPrincipal {
+                            invalid_principal: principal.clone(),
+                        },
+                    }
+                })
+            };
 
         // We have only one non-indexed data field.
         let user_address: [u8; 32] = entry.data.0.clone().try_into().map_err(|data| {
-            ReceivedEventError::InvalidEventSource {
+            ReceivedDepsitEventError::InvalidEventSource {
                 source: event_source,
                 error: EventSourceError::InvalidEvent(format!(
                     "Invalid data length; expected 32-byte value, got {}",
@@ -244,7 +302,7 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
         match entry.topics[0] {
             FixedSizeData(crate::state::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC) => {
                 if entry.topics.len() != 4 {
-                    return Err(ReceivedEventError::InvalidEventSource {
+                    return Err(ReceivedDepsitEventError::InvalidEventSource {
                         source: event_source,
                         error: EventSourceError::InvalidEvent(format!(
                             "Expected 4 topics for ReceivedDepositEvnet event, got {}",
@@ -275,7 +333,7 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
                     })),
                 }
             }
-            _ => Err(ReceivedEventError::InvalidEventSource {
+            _ => Err(ReceivedDepsitEventError::InvalidEventSource {
                 source: event_source,
                 error: EventSourceError::InvalidEvent(format!(
                     "Expected either ReceivedEth or ReceivedERC20 topics, got {}",
