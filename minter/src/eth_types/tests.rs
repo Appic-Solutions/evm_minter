@@ -1,6 +1,6 @@
 use crate::eth_types::Address;
 use proptest::{prop_assert, prop_assert_eq, proptest};
-use std::str::FromStr;
+use std::{ops::Add, str::FromStr};
 
 mod from_string {
     use super::*;
@@ -71,7 +71,7 @@ mod from_32_bytes {
         );
     }
 
-    fn thirty_two_bytes_from_ethereum_string(s: &str) -> [u8; 32] {
+    pub fn thirty_two_bytes_from_ethereum_string(s: &str) -> [u8; 32] {
         assert!(s.starts_with("0x"), "string must start with 0x");
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(&s[2..], &mut bytes).unwrap();
@@ -109,4 +109,13 @@ fn should_display_eip_55_test_cases() {
         let addr = Address::from_str(example).unwrap();
         assert_eq!(&addr.to_string(), example);
     }
+}
+#[test]
+fn should_return_true_when_native_token() {
+    let address_bytes = from_32_bytes::thirty_two_bytes_from_ethereum_string(
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+    );
+    let address = Address::try_from(&address_bytes).unwrap();
+
+    assert!(address.is_native_token())
 }

@@ -27,6 +27,9 @@ impl Address {
     pub const fn new(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
+    pub fn is_native_token(&self) -> bool {
+        self.0.iter().all(|&x| x == 0)
+    }
 }
 
 impl LowerHex for Address {

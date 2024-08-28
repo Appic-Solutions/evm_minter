@@ -205,8 +205,8 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
             });
         }
 
-        let parse_address = |address: &FixedSizeData| -> Result<Address, ReceivedEventError> {
-            Address::try_from(&address.0).map_err(|err| ReceivedEventError::InvalidEventSource {
+        let parse_address = |address: &[u8; 32]| -> Result<Address, ReceivedEventError> {
+            Address::try_from(address).map_err(|err| ReceivedEventError::InvalidEventSource {
                 source: event_source,
                 error: EventSourceError::InvalidEvent(format!(
                     "Invalid address in log entry: {}",
@@ -237,42 +237,52 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
             }
         })?;
 
+        let from_address = parse_address(&user_address)?;
+
         // We have 4 indexed topics for all deposit events:
         // (hash, contract_address of the token(in case of native token its 0x000000000000000000000000000), amount of token(value), principalId)
-        // match entry.topics[0] {
-
-        //     FixedSizeData(crate::deposit::RECEIVED_ERC20_EVENT_TOPIC) => {
-        //         if entry.topics.len() != 4 {
-        //             return Err(ReceivedEventError::InvalidEventSource {
-        //                 source: event_source,
-        //                 error: EventSourceError::InvalidEvent(format!(
-        //                     "Expected 4 topics for ReceivedDepositEvnet event, got {}",
-        //                     entry.topics.len()
-        //                 )),
-        //             });
-        //         };
-        //         let token_contract_address = parse_address(&entry.topics[1])?;
-        //         let from_address = parse_address(&entry.topics[2])?;
-        //         let principal = parse_principal(&entry.topics[3])?;
-        //         Ok(ReceivedErc20Event {
-        //             transaction_hash,
-        //             block_number,
-        //             log_index,
-        //             from_address,
-        //             value: Erc20Value::from_be_bytes(value_bytes),
-        //             principal,
-        //             erc20_contract_address,
-        //         }
-        //         .into())
-        //     }
-        //     _ => Err(ReceivedEventError::InvalidEventSource {
-        //         source: event_source,
-        //         error: EventSourceError::InvalidEvent(format!(
-        //             "Expected either ReceivedEth or ReceivedERC20 topics, got {}",
-        //             entry.topics[0]
-        //         )),
-        //     }),
-        // }
+        match entry.topics[0] {
+            FixedSizeData(crate::state::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC) => {
+                if entry.topics.len() != 4 {
+                    return Err(ReceivedEventError::InvalidEventSource {
+                        source: event_source,
+                        error: EventSourceError::InvalidEvent(format!(
+                            "Expected 4 topics for ReceivedDepositEvnet event, got {}",
+                            entry.topics.len()
+                        )),
+                    });
+                };
+                let token_contract_address = parse_address(&entry.topics[1].0)?;
+                let principal = parse_principal(&entry.topics[3])?;
+                let value = &entry.topics[2];
+                match token_contract_address.is_native_token() {
+                    true => Ok(ReceivedDepositEvent::Native(ReceivedNativeEvent {
+                        transaction_hash,
+                        block_number,
+                        log_index,
+                        from_address,
+                        value: Wei::from_be_bytes(value.0),
+                        principal,
+                    })),
+                    false => Ok(ReceivedDepositEvent::Erc20(ReceivedErc20Event {
+                        transaction_hash,
+                        block_number,
+                        log_index,
+                        from_address,
+                        value: Erc20Value::from_be_bytes(value.0),
+                        principal,
+                        erc20_contract_address: token_contract_address,
+                    })),
+                }
+            }
+            _ => Err(ReceivedEventError::InvalidEventSource {
+                source: event_source,
+                error: EventSourceError::InvalidEvent(format!(
+                    "Expected either ReceivedEth or ReceivedERC20 topics, got {}",
+                    entry.topics[0]
+                )),
+            }),
+        }
     }
 }
 

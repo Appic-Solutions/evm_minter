@@ -1,15 +1,22 @@
-use std::{cell::RefCell, collections::HashSet};
+use std::{cell::RefCell, collections::HashSet, str::FromStr};
 
 use candid::Principal;
+use hex_literal::hex;
 
 use crate::{
-    eth_types::Address, lifecycles::EvmNetwork, numeric::BlockNumber, rpc_declrations::BlockTag,
+    eth_types::Address,
+    lifecycles::EvmNetwork,
+    numeric::BlockNumber,
+    rpc_declrations::{BlockTag, FixedSizeData},
 };
 use ic_cdk::api::management_canister::ecdsa::EcdsaPublicKeyResponse;
 
 thread_local! {
     pub static STATE:RefCell<Option<State>>=RefCell::default();
 }
+
+pub(crate) const RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC: [u8; 32] =
+    hex!("d04bc46dc93f065e7320e2cdc9c8ea8e1acaf085995e9f777cf770a2ee71e655");
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct State {
