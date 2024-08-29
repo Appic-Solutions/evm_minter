@@ -261,17 +261,15 @@ impl<Unit> Ord for CheckedAmountOf<Unit> {
 //
 // We want serialization format of `Repr` and the `AmountOf` to match
 // exactly, that's why we have to provide custom instances.
-// TODO: To be checked
 impl<Unit> Serialize for CheckedAmountOf<Unit> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u128(self.0.as_u128())
+        self.0.serialize(serializer)
     }
 }
 
 impl<'de, Unit> Deserialize<'de> for CheckedAmountOf<Unit> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = u128::deserialize(deserializer)?;
-        Ok(Self(ethnum::u256::from(value), PhantomData))
+        ethnum::u256::deserialize(deserializer).map(Self::from_inner)
     }
 }
 

@@ -3,11 +3,13 @@ mod test;
 use std::fmt;
 
 use crate::eth_types::Address;
+use crate::logs::{DEBUG, INFO};
 use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
 use crate::rpc_client::{MultiCallError, RpcClient};
 use crate::rpc_declrations::{FixedSizeData, Hash, LogEntry};
 use crate::state::read_state;
 use candid::Principal;
+use ic_canister_log::log;
 use minicbor::{Decode, Encode};
 use thiserror::Error;
 
@@ -48,6 +50,18 @@ pub struct ReceivedErc20Event {
 pub enum ReceivedDepositEvent {
     Native(ReceivedNativeEvent),
     Erc20(ReceivedErc20Event),
+}
+
+impl From<ReceivedNativeEvent> for ReceivedDepositEvent {
+    fn from(event: ReceivedNativeEvent) -> Self {
+        ReceivedDepositEvent::Native(event)
+    }
+}
+
+impl From<ReceivedErc20Event> for ReceivedDepositEvent {
+    fn from(event: ReceivedErc20Event) -> Self {
+        ReceivedDepositEvent::Erc20(event)
+    }
 }
 
 impl fmt::Debug for ReceivedNativeEvent {
@@ -175,6 +189,23 @@ pub enum EventSourceError {
     InvalidPrincipal { invalid_principal: FixedSizeData },
     #[error("invalid ReceivedDepositEvent: {0}")]
     InvalidEvent(String),
+}
+
+pub fn report_transaction_error(error: ReceivedDepsitEventError) {
+    match error {
+        ReceivedDepsitEventError::PendingLogEntry => {
+            log!(
+                DEBUG,
+                "[report_transaction_error]: ignoring pending log entry",
+            );
+        }
+        ReceivedDepsitEventError::InvalidEventSource { source, error } => {
+            log!(
+                INFO,
+                "[report_transaction_error]: cannot process {source} due to {error}",
+            );
+        }
+    }
 }
 
 // Fetches deposit logs by creating an instance of RPClient from state

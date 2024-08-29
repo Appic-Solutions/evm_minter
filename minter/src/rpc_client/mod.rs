@@ -26,6 +26,7 @@ use evm_rpc_client::{
     },
     CallerService, EvmRpcClient, OverrideRpcConfig,
 };
+use ic_cdk::api::call::RejectionCode;
 use serde_json::error;
 // We expect most of the calls to contain zero events.
 const ETH_GET_LOGS_INITIAL_RESPONSE_SIZE_ESTIMATE: u64 = 100;
@@ -139,6 +140,31 @@ pub enum MultiCallError<T> {
     ConsistentJsonRpcError { code: i64, message: String },
     ConsistentEvmRpcCanisterError(String),
     InconsistentResults(Vec<(EvmRpcService, Result<T, SingleCallError>)>),
+}
+
+impl<T> MultiCallError<T> {
+    pub fn has_http_outcall_error_matching<P: Fn(&HttpOutcallError) -> bool>(
+        &self,
+        predicate: P,
+    ) -> bool {
+        match self {
+            MultiCallError::ConsistentHttpOutcallError(error) => predicate(error),
+            MultiCallError::ConsistentJsonRpcError { .. } => false,
+            MultiCallError::InconsistentResults(results) => {
+                results
+                    .into_iter()
+                    .any(|(rpcservice, rpc_result)| match rpc_result {
+                        Ok(_) => false,
+                        Err(rpc_error) => match rpc_error {
+                            SingleCallError::HttpOutcallError(error) => predicate(error),
+                            SingleCallError::JsonRpcError { .. }
+                            | SingleCallError::EvmRpcError(_) => false,
+                        },
+                    })
+            }
+            MultiCallError::ConsistentEvmRpcCanisterError(_) => false,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -340,4 +366,13 @@ fn into_evm_topic(topics: Vec<Topic>) -> Vec<Vec<String>> {
         });
     }
     result
+}
+
+pub fn is_response_too_large(error: &HttpOutcallError) -> bool {
+    match error {
+        HttpOutcallError::IcError { code, message } => {
+            code == &RejectionCode::SysFatal && message.contains("size limit")
+        }
+        _ => false,
+    }
 }
