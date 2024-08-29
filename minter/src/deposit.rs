@@ -10,7 +10,9 @@ use crate::numeric::BlockNumber;
 use crate::rpc_client::{is_response_too_large, RpcClient};
 use crate::rpc_declrations::BlockSpec;
 use crate::state::audit::{process_event, EventType};
-use crate::state::{mutate_state, read_state, State, TaskType};
+use crate::state::{
+    mutate_state, read_state, State, TaskType, RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC,
+};
 
 /// Scraps Deposit logs between `from` and `min(from + MAX_BLOCK_SPREAD, to)` since certain RPC providers
 /// require that the number of blocks queried is no greater than MAX_BLOCK_SPREAD.
@@ -18,7 +20,6 @@ use crate::state::{mutate_state, read_state, State, TaskType};
 /// was no error when querying the providers, otherwise returns `None`.
 async fn scrape_logs_range_inclusive<F>(
     topic: &[u8; 32],
-    topic_name: &str,
     helper_contract_address: Address,
     token_contract_addresses: &[Address],
     from: BlockNumber,
@@ -37,7 +38,7 @@ where
             let mut last_block_number = min(max_to, to);
             log!(
                 DEBUG,
-                "Scrapping {topic_name} logs from block {:?} to block {:?}...",
+                "Scrapping logs from block {:?} to block {:?}...",
                 from,
                 last_block_number
             );
@@ -56,7 +57,7 @@ where
                     Err(e) => {
                         log!(
                         INFO,
-                        "Failed to get {topic_name} logs from block {from} to block {last_block_number}: {e:?}",
+                        "Failed to get logs from block {from} to block {last_block_number}: {e:?}",
                     );
                         if e.has_http_outcall_error_matching(is_response_too_large) {
                             if from == last_block_number {
@@ -90,7 +91,7 @@ where
             for event in transaction_events {
                 log!(
                     INFO,
-                    "Received event {event:?}; will mint {} {topic_name} to {}",
+                    "Received event {event:?}; will mint {} to {}",
                     event.value(),
                     event.principal()
                 );
@@ -127,52 +128,50 @@ where
     }
 }
 
-// async fn scrape_contract_logs<F>(
-//     topic: &[u8; 32],
-//     topic_name: &str,
-//     helper_contract_address: Option<Address>,
-//     token_contract_addresses: &[Address],
-//     last_block_number: BlockNumber,
-//     mut last_scraped_block_number: BlockNumber,
-//     max_block_spread: u16,
-//     update_last_scraped_block_number: F,
-// ) where
-//     F: Fn(BlockNumber),
-// {
-//     let helper_contract_address = match helper_contract_address {
-//         Some(address) => address,
-//         None => {
-//             log!(
-//                 DEBUG,
-//                 "[scrape_contract_logs]: skipping scrapping logs: no contract address"
-//             );
-//             return;
-//         }
-//     };
+async fn scrape_contract_logs<F>(
+    topic: &[u8; 32],
+    helper_contract_address: Option<Address>,
+    token_contract_addresses: &[Address],
+    last_block_number: BlockNumber,
+    mut last_scraped_block_number: BlockNumber,
+    max_block_spread: u16,
+    update_last_scraped_block_number: F,
+) where
+    F: Fn(BlockNumber),
+{
+    let helper_contract_address = match helper_contract_address {
+        Some(address) => address,
+        None => {
+            log!(
+                DEBUG,
+                "[scrape_contract_logs]: skipping scrapping logs: no contract address"
+            );
+            return;
+        }
+    };
 
-//     while last_scraped_block_number < last_block_number {
-//         let next_block_to_query = last_scraped_block_number
-//             .checked_increment()
-//             .unwrap_or(BlockNumber::MAX);
-//         last_scraped_block_number = match scrape_logs_range_inclusive(
-//             topic,
-//             topic_name,
-//             helper_contract_address,
-//             token_contract_addresses,
-//             next_block_to_query,
-//             last_block_number,
-//             max_block_spread,
-//             &update_last_scraped_block_number,
-//         )
-//         .await
-//         {
-//             Some(last_scraped_block_number) => last_scraped_block_number,
-//             None => {
-//                 return;
-//             }
-//         };
-//     }
-// }
+    while last_scraped_block_number < last_block_number {
+        let next_block_to_query = last_scraped_block_number
+            .checked_increment()
+            .unwrap_or(BlockNumber::MAX);
+        last_scraped_block_number = match scrape_logs_range_inclusive(
+            topic,
+            helper_contract_address,
+            token_contract_addresses,
+            next_block_to_query,
+            last_block_number,
+            max_block_spread,
+            &update_last_scraped_block_number,
+        )
+        .await
+        {
+            Some(last_scraped_block_number) => last_scraped_block_number,
+            None => {
+                return;
+            }
+        };
+    }
+}
 
 pub async fn scrape_logs() {
     let _guard = match TimerGuard::new(TaskType::ScrapLogs) {
@@ -190,6 +189,26 @@ pub async fn scrape_logs() {
         }
     };
     let max_block_spread = read_state(|s| s.max_block_spread_for_logs_scraping());
+
+    let token_contract_addresses =
+        read_state(|s| s.erc20_tokens.alt_keys().cloned().collect::<Vec<_>>());
+    if token_contract_addresses.is_empty() {
+        log!(
+            DEBUG,
+            "[scrape_contract_logs]: skipping scrapping ERC-20 logs: no token contract address"
+        );
+        return;
+    }
+    scrape_contract_logs(
+        &RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC,
+        read_state(|s| s.helper_contract_address),
+        &token_contract_addresses,
+        last_block_number,
+        read_state(|s| s.last_scraped_block_number),
+        max_block_spread,
+        &|last_block_number| mutate_state(|s| s.last_scraped_block_number = last_block_number),
+    )
+    .await
 }
 
 // Updates last_observed_block_number in the state.
