@@ -1,16 +1,17 @@
 #[cfg(test)]
 mod tests;
 
-use std::{collections::BTreeMap, fmt::Display, str::FromStr};
+use std::{clone, collections::BTreeMap, fmt::Display, str::FromStr};
 
 use crate::{
     checked_amount::CheckedAmountOf,
     eth_types::Address,
     lifecycles::EvmNetwork,
     logs::{PrintProxySink, DEBUG, INFO, TRACE_HTTP},
-    numeric::{BlockNumber, LogIndex, Wei},
+    numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas},
     rpc_declrations::{
         Block, BlockSpec, BlockTag, Data, FixedSizeData, GetLogsParam, Hash, LogEntry, Topic,
+        TransactionReceipt, TransactionStatus,
     },
     state::State,
 };
@@ -22,10 +23,12 @@ use evm_rpc_client::{
         FeeHistoryArgs as EvmFeeHistoryArgs, GetLogsArgs as EvmGetLogsArgs, HttpOutcallError,
         LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult, RpcConfig as EvmRpcConfig,
         RpcError as EvmRpcError, RpcResult as EvmRpcResult, RpcService as EvmRpcService,
-        RpcServices as EvmRpcServices,
+        RpcServices as EvmRpcServices, TransactionReceipt as EvmTransactionReceipt,
     },
     CallerService, EvmRpcClient, OverrideRpcConfig,
 };
+use num_traits::ToPrimitive;
+
 use ic_cdk::api::call::RejectionCode;
 use serde_json::error;
 // We expect most of the calls to contain zero events.
@@ -111,6 +114,23 @@ impl RpcClient {
             )))
         }
     }
+
+    pub async fn eth_get_transaction_receipt(
+        &self,
+        tx_hash: Hash,
+    ) -> Result<Option<TransactionReceipt>, MultiCallError<Option<TransactionReceipt>>> {
+        if let Some(evm_rpc_client) = &self.evm_rpc_client {
+            return evm_rpc_client
+                .eth_get_transaction_receipt(tx_hash.to_string())
+                .await
+                .reduce()
+                .into();
+        } else {
+            Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
+                "EVM RPC canister can not be None",
+            )))
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Ord, PartialOrd)]
@@ -163,6 +183,38 @@ impl<T> MultiCallError<T> {
                     })
             }
             MultiCallError::ConsistentEvmRpcCanisterError(_) => false,
+        }
+    }
+
+    // If at there are at least two ok responses
+    /// Expects at least 2 ok results to be ok or return the following error:
+    /// * MultiCallError::ConsistentJsonRpcError: all errors are the same JSON-RPC error.
+    /// * MultiCallError::ConsistentHttpOutcallError: all errors are the same HTTP outcall error.
+    /// * MultiCallError::InconsistentResults if there are different errors or an ok result with some errors.
+    pub fn at_least_two_ok(self) -> Result<Vec<(EvmRpcService, T)>, MultiCallError<T>> {
+        match self {
+            MultiCallError::InconsistentResults(inconsistent_result) => {
+                let inconsistent_ok_results: Vec<(EvmRpcService, Result<T, SingleCallError>)> =
+                    inconsistent_result
+                        .into_iter()
+                        .filter(|(rpc_service, result)| result.is_ok())
+                        .collect();
+
+                match inconsistent_ok_results.len() {
+                    0 => Err(MultiCallError::InconsistentResults(inconsistent_ok_results)),
+                    1 => Err(MultiCallError::InconsistentResults(inconsistent_ok_results)),
+                    _ => {
+                        let mapped: Vec<(EvmRpcService, T)> = inconsistent_ok_results
+                            .into_iter()
+                            .filter_map(|(rpc_service, result)| {
+                                result.ok().map(|value| (rpc_service, value))
+                            })
+                            .collect();
+                        Ok(mapped)
+                    }
+                }
+            }
+            _ => Err(self),
         }
     }
 }
@@ -285,8 +337,96 @@ impl<T: std::fmt::Debug> ReducedResult<T> {
         };
         self
     }
+
+    // If Inconsistent, Aggregates results from multiple RPC node providers into a single result based on a strict majority rule.
+    // The aggregation is performed by grouping results with the same key extracted using the provided extractor function.
+    // If a strict majority (more than half) of results share the same value for a key, that value is returned.
+    // If no strict majority exists, an error is returned with the inconsistent results.
+    // pub fn reduce_with_strict_majority_by_key<F: Fn(&T) -> K, K: Ord>(self, extractor: F) -> Self {
+    //     match self.result {
+    //         Ok(_) => self,
+    //         Err(multi_error) => match multi_error.at_least_two_ok() {
+    //             Ok(inconsistent_ok_results) => {
+    //                 let mut votes_by_key: BTreeMap<K, BTreeMap<EvmRpcService, T>> = BTreeMap::new();
+
+    //                 self
+    //             }
+    //             Err(error) => ReducedResult { result: Err(error) },
+    //         },
+    //     };
+    //     for (provider, result) in self.at_least_two_ok()?.into_iter() {
+    //         let key = extractor(&result);
+    //         match votes_by_key.remove(&key) {
+    //             Some(mut votes_for_same_key) => {
+    //                 let (_other_provider, other_result) = votes_for_same_key
+    //                     .last_key_value()
+    //                     .expect("BUG: results_with_same_key is non-empty");
+    //                 if &result != other_result {
+    //                     let error = MultiCallError::InconsistentResults(
+    //                         MultiCallResults::from_non_empty_iter(
+    //                             votes_for_same_key
+    //                                 .into_iter()
+    //                                 .chain(std::iter::once((provider, result)))
+    //                                 .map(|(provider, result)| (provider, Ok(result))),
+    //                         ),
+    //                     );
+    //                     log!(
+    //                         INFO,
+    //                         "[reduce_with_strict_majority_by_key]: inconsistent results {error:?}"
+    //                     );
+    //                     return Err(error);
+    //                 }
+    //                 votes_for_same_key.insert(provider, result);
+    //                 votes_by_key.insert(key, votes_for_same_key);
+    //             }
+    //             None => {
+    //                 let _ = votes_by_key.insert(key, BTreeMap::from([(provider, result)]));
+    //             }
+    //         }
+    //     }
+
+    //     let mut tally: Vec<(K, BTreeMap<RpcNodeProvider, T>)> = Vec::from_iter(votes_by_key);
+    //     tally.sort_unstable_by(|(_left_key, left_ballot), (_right_key, right_ballot)| {
+    //         left_ballot.len().cmp(&right_ballot.len())
+    //     });
+    //     match tally.len() {
+    //         0 => panic!("BUG: tally should be non-empty"),
+    //         1 => Ok(tally
+    //             .pop()
+    //             .and_then(|(_key, mut ballot)| ballot.pop_last())
+    //             .expect("BUG: tally is non-empty")
+    //             .1),
+    //         _ => {
+    //             let mut first = tally.pop().expect("BUG: tally has at least 2 elements");
+    //             let second = tally.pop().expect("BUG: tally has at least 2 elements");
+    //             if first.1.len() > second.1.len() {
+    //                 Ok(first
+    //                     .1
+    //                     .pop_last()
+    //                     .expect("BUG: tally should be non-empty")
+    //                     .1)
+    //             } else {
+    //                 let error =
+    //                     MultiCallError::InconsistentResults(MultiCallResults::from_non_empty_iter(
+    //                         first
+    //                             .1
+    //                             .into_iter()
+    //                             .chain(second.1)
+    //                             .map(|(provider, result)| (provider, Ok(result))),
+    //                     ));
+    //                 log!(
+    //                     INFO,
+    //                     "[reduce_with_strict_majority_by_key]: no strict majority {error:?}"
+    //                 );
+    //                 Err(error)
+    //             }
+    //         }
+    //     }
+    // }
 }
 
+// Reduce trait implimentation for converting EVM_RPC_CANISTER response into desiered type.
+// Convert inconsistent response into consistent if necessary with different strategies
 trait Reduce {
     type Item;
     fn reduce(self) -> ReducedResult<Self::Item>;
@@ -343,6 +483,40 @@ impl Reduce for EvmMultiRpcResult<Vec<EvmLogEntry>> {
             .reduce_with_equality()
             .map_reduce(&map_logs);
         mapped_logs
+    }
+}
+
+impl Reduce for EvmMultiRpcResult<Option<EvmTransactionReceipt>> {
+    type Item = Option<TransactionReceipt>;
+
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        fn map_transaction_receipt(
+            receipt: Option<EvmTransactionReceipt>,
+        ) -> Result<Option<TransactionReceipt>, String> {
+            receipt
+                .map(|evm_receipt| {
+                    Ok(TransactionReceipt {
+                        block_hash: Hash::from_str(&evm_receipt.block_hash)?,
+                        block_number: BlockNumber::try_from(evm_receipt.block_number)?,
+                        effective_gas_price: WeiPerGas::try_from(evm_receipt.effective_gas_price)?,
+                        gas_used: GasAmount::try_from(evm_receipt.gas_used)?,
+                        status: TransactionStatus::try_from(
+                            evm_receipt
+                                .status
+                                .0
+                                .to_u8()
+                                .ok_or("invalid transaction status")?,
+                        )?,
+                        transaction_hash: Hash::from_str(&evm_receipt.transaction_hash)?,
+                    })
+                })
+                .transpose()
+        }
+
+        let mapped_transaction_receipt = ReducedResult::from_multi_result(self)
+            .reduce_with_equality()
+            .map_reduce(&map_transaction_receipt);
+        mapped_transaction_receipt
     }
 }
 

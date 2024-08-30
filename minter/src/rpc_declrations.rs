@@ -6,7 +6,7 @@ use std::fmt;
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 
 use crate::eth_types::Address;
-use crate::numeric::{BlockNumber, LogIndex, Wei};
+use crate::numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas};
 
 pub type Quantity = ethnum::u256;
 
@@ -307,4 +307,138 @@ pub struct Block {
     pub number: BlockNumber,
     /// Base fee value of this block
     pub base_fee_per_gas: Wei,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Encode, Decode)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionReceipt {
+    /// The hash of the block containing the transaction.
+    #[n(0)]
+    pub block_hash: Hash,
+
+    /// The number of the block containing the transaction.
+    #[n(1)]
+    pub block_number: BlockNumber,
+
+    /// The total base charge plus tip paid for each unit of gas
+    #[n(2)]
+    pub effective_gas_price: WeiPerGas,
+
+    /// The amount of gas used by this specific transaction alone
+    #[n(3)]
+    pub gas_used: GasAmount,
+
+    /// Status of the transaction.
+    #[n(4)]
+    pub status: TransactionStatus,
+
+    /// The hash of the transaction
+    #[n(5)]
+    pub transaction_hash: Hash,
+}
+
+impl TransactionReceipt {
+    pub fn effective_transaction_fee(&self) -> Wei {
+        self.effective_gas_price
+            .transaction_cost(self.gas_used)
+            .expect("ERROR: overflow during transaction fee calculation")
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Encode, Decode)]
+#[serde(try_from = "ethnum::u256", into = "ethnum::u256")]
+pub enum TransactionStatus {
+    /// Transaction was mined and executed successfully.
+    #[n(0)]
+    Success,
+
+    /// Transaction was mined but execution failed (e.g., out-of-gas error).
+    /// The amount of the transaction is returned to the sender but gas is consumed.
+    /// Note that this is different from a transaction that is not mined at all: a failed transaction
+    /// is part of the blockchain and the next transaction from the same sender should have an incremented
+    /// transaction nonce.
+    #[n(1)]
+    Failure,
+}
+
+impl From<TransactionStatus> for ethnum::u256 {
+    fn from(value: TransactionStatus) -> Self {
+        match value {
+            TransactionStatus::Success => ethnum::u256::ONE,
+            TransactionStatus::Failure => ethnum::U256::ZERO,
+        }
+    }
+}
+
+impl TryFrom<u8> for TransactionStatus {
+    type Error = String;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(TransactionStatus::Failure),
+            1 => Ok(TransactionStatus::Success),
+            _ => Err(format!("invalid transaction status: {}", value)),
+        }
+    }
+}
+
+impl TryFrom<ethnum::u256> for TransactionStatus {
+    type Error = String;
+
+    fn try_from(value: ethnum::u256) -> Result<Self, Self::Error> {
+        match value {
+            ethnum::u256::ZERO | ethnum::u256::ONE => TransactionStatus::try_from(value.as_u8()),
+            _ => Err(format!("invalid transaction status: {}", value)),
+        }
+    }
+}
+
+impl Display for TransactionStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TransactionStatus::Success => write!(f, "Success"),
+            TransactionStatus::Failure => write!(f, "Failure"),
+        }
+    }
+}
+
+/// Parameters of the [`eth_feeHistory`](https://ethereum.github.io/execution-apis/api-documentation/) call.
+#[derive(Debug, Serialize, Clone)]
+#[serde(into = "(Quantity, BlockSpec, Vec<u8>)")]
+pub struct FeeHistoryParams {
+    /// Number of blocks in the requested range.
+    /// Typically providers request this to be between 1 and 1024.
+    pub block_count: Quantity,
+    /// Highest block of the requested range.
+    /// Integer block number, or "latest" for the last mined block or "pending", "earliest" for not yet mined transactions.
+    pub highest_block: BlockSpec,
+    /// A monotonically increasing list of percentile values between 0 and 100.
+    /// For each block in the requested range, the transactions will be sorted in ascending order
+    /// by effective tip per gas and the corresponding effective tip for the percentile
+    /// will be determined, accounting for gas consumed.
+    pub reward_percentiles: Vec<u8>,
+}
+
+impl From<FeeHistoryParams> for (Quantity, BlockSpec, Vec<u8>) {
+    fn from(value: FeeHistoryParams) -> Self {
+        (
+            value.block_count,
+            value.highest_block,
+            value.reward_percentiles,
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FeeHistory {
+    /// Lowest number block of the returned range.
+    pub oldest_block: BlockNumber,
+    /// An array of block base fees per gas.
+    /// This includes the next block after the newest of the returned range,
+    /// because this value can be derived from the newest block.
+    /// Zeroes are returned for pre-EIP-1559 blocks.
+    pub base_fee_per_gas: Vec<WeiPerGas>,
+    /// A two-dimensional array of effective priority fees per gas at the requested block percentiles.
+    pub reward: Vec<Vec<WeiPerGas>>,
 }
