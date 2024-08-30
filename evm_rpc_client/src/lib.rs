@@ -9,11 +9,12 @@ use crate::types::candid::{
 };
 use async_trait::async_trait;
 use candid::utils::ArgumentEncoder;
-use candid::{CandidType, Principal};
+use candid::{CandidType, Nat, Principal};
 use ic_canister_log::{log, Sink};
 use ic_cdk::api::call::RejectionCode;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
+use types::candid::{GetTransactionCountArgs, SendRawTransactionStatus, TransactionReceipt};
 
 #[async_trait]
 pub trait InterCanisterCall {
@@ -56,6 +57,9 @@ pub struct OverrideRpcConfig {
     pub eth_get_block_by_number: Option<RpcConfig>,
     pub eth_get_logs: Option<RpcConfig>,
     pub eth_fee_history: Option<RpcConfig>,
+    pub eth_get_transaction_receipt: Option<RpcConfig>,
+    pub eth_get_transaction_count: Option<RpcConfig>,
+    pub eth_send_raw_transaction: Option<RpcConfig>,
 }
 
 // Clinet for making intercanister calls to evm_rpc_canister
@@ -100,6 +104,42 @@ impl<L: Sink> EvmRpcClient<L> {
             "eth_feeHistory",
             self.override_rpc_config.eth_fee_history.clone(),
             args,
+        )
+        .await
+    }
+
+    pub async fn eth_get_transaction_receipt(
+        &self,
+        transaction_hash: String,
+    ) -> MultiRpcResult<Option<TransactionReceipt>> {
+        self.call_internal(
+            "eth_getTransactionReceipt",
+            self.override_rpc_config.eth_get_transaction_receipt.clone(),
+            transaction_hash,
+        )
+        .await
+    }
+
+    pub async fn eth_get_transaction_count(
+        &self,
+        args: GetTransactionCountArgs,
+    ) -> MultiRpcResult<Nat> {
+        self.call_internal(
+            "eth_getTransactionCount",
+            self.override_rpc_config.eth_get_transaction_count.clone(),
+            args,
+        )
+        .await
+    }
+
+    pub async fn eth_send_raw_transaction(
+        &self,
+        raw_signed_tx_hex: String,
+    ) -> MultiRpcResult<SendRawTransactionStatus> {
+        self.call_internal(
+            "eth_sendRawTransaction",
+            self.override_rpc_config.eth_send_raw_transaction.clone(),
+            raw_signed_tx_hex,
         )
         .await
     }

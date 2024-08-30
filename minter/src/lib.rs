@@ -2,6 +2,7 @@ mod cbor;
 pub mod checked_amount;
 mod deposit;
 mod deposit_logs;
+mod endpoints;
 mod erc20;
 mod eth_types;
 mod guard;
