@@ -10,11 +10,12 @@ use crate::{
     logs::{PrintProxySink, DEBUG, INFO, TRACE_HTTP},
     numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas},
     rpc_declrations::{
-        Block, BlockSpec, BlockTag, Data, FixedSizeData, GetLogsParam, Hash, LogEntry, Topic,
-        TransactionReceipt, TransactionStatus,
+        Block, BlockSpec, BlockTag, Data, FeeHistory, FeeHistoryParams, FixedSizeData,
+        GetLogsParam, Hash, LogEntry, Topic, TransactionReceipt, TransactionStatus,
     },
     state::State,
 };
+use candid::Nat;
 use ic_canister_log::log;
 
 use evm_rpc_client::{
@@ -115,7 +116,7 @@ impl RpcClient {
         }
     }
 
-    pub async fn eth_get_transaction_receipt(
+    pub async fn get_transaction_receipt(
         &self,
         tx_hash: Hash,
     ) -> Result<Option<TransactionReceipt>, MultiCallError<Option<TransactionReceipt>>> {
@@ -125,6 +126,27 @@ impl RpcClient {
                 .await
                 .reduce()
                 .into();
+        } else {
+            Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
+                "EVM RPC canister can not be None",
+            )))
+        }
+    }
+
+    pub async fn fee_history(
+        &self,
+        params: FeeHistoryParams,
+    ) -> Result<FeeHistory, MultiCallError<FeeHistory>> {
+        if let Some(evm_rpc_client) = &self.evm_rpc_client {
+            let result = evm_rpc_client
+                .eth_fee_history(EvmFeeHistoryArgs {
+                    block_count: params.block_count.as_u128(),
+                    newest_block: into_evm_block_tag(params.highest_block),
+                    reward_percentiles: Some(params.reward_percentiles),
+                })
+                .await
+                .reduce();
+            return result.result;
         } else {
             Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
                 "EVM RPC canister can not be None",
@@ -517,6 +539,34 @@ impl Reduce for EvmMultiRpcResult<Option<EvmTransactionReceipt>> {
             .reduce_with_equality()
             .map_reduce(&map_transaction_receipt);
         mapped_transaction_receipt
+    }
+}
+
+impl Reduce for EvmMultiRpcResult<Option<EvmFeeHistory>> {
+    type Item = FeeHistory;
+
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        fn map_fee_history(fee_history: Option<EvmFeeHistory>) -> Result<FeeHistory, String> {
+            let fee_history = fee_history.ok_or("No fee history available")?;
+            Ok(FeeHistory {
+                oldest_block: BlockNumber::try_from(fee_history.oldest_block)?,
+                base_fee_per_gas: wei_per_gas_iter(fee_history.base_fee_per_gas)?,
+                reward: fee_history
+                    .reward
+                    .into_iter()
+                    .map(wei_per_gas_iter)
+                    .collect::<Result<_, _>>()?,
+            })
+        }
+
+        fn wei_per_gas_iter(values: Vec<Nat>) -> Result<Vec<WeiPerGas>, String> {
+            values.into_iter().map(WeiPerGas::try_from).collect()
+        }
+
+        let mapped_fee_history = ReducedResult::from_multi_result(self)
+            .map_reduce(&map_fee_history)
+            .reduce_with_strict_majority_by_key(|fee_history| fee_history.oldest_block);
+        mapped_fee_history
     }
 }
 
