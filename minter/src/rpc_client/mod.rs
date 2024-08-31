@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::{clone, collections::BTreeMap, fmt::Display, str::FromStr};
+use std::{clone, collections::BTreeMap, fmt::Display, ops::Deref, str::FromStr};
 
 use crate::{
     checked_amount::CheckedAmountOf,
@@ -154,7 +154,7 @@ impl From<EvmRpcError> for SingleCallError {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum MultiCallError<T> {
     ConsistentHttpOutcallError(HttpOutcallError),
     ConsistentJsonRpcError { code: i64, message: String },
@@ -162,7 +162,7 @@ pub enum MultiCallError<T> {
     InconsistentResults(Vec<(EvmRpcService, Result<T, SingleCallError>)>),
 }
 
-impl<T> MultiCallError<T> {
+impl<T: Clone> MultiCallError<T> {
     pub fn has_http_outcall_error_matching<P: Fn(&HttpOutcallError) -> bool>(
         &self,
         predicate: P,
@@ -191,30 +191,28 @@ impl<T> MultiCallError<T> {
     /// * MultiCallError::ConsistentJsonRpcError: all errors are the same JSON-RPC error.
     /// * MultiCallError::ConsistentHttpOutcallError: all errors are the same HTTP outcall error.
     /// * MultiCallError::InconsistentResults if there are different errors or an ok result with some errors.
-    pub fn at_least_two_ok(self) -> Result<Vec<(EvmRpcService, T)>, MultiCallError<T>> {
+    pub fn at_least_two_ok(&self) -> Result<Vec<(EvmRpcService, T)>, MultiCallError<T>> {
         match self {
             MultiCallError::InconsistentResults(inconsistent_result) => {
-                let inconsistent_ok_results: Vec<(EvmRpcService, Result<T, SingleCallError>)> =
-                    inconsistent_result
-                        .into_iter()
-                        .filter(|(rpc_service, result)| result.is_ok())
-                        .collect();
+                let inconsistent_ok_results: Vec<(EvmRpcService, T)> = inconsistent_result
+                    .clone()
+                    .into_iter()
+                    .filter_map(|(rpc_service, result)| {
+                        result.ok().map(|value| (rpc_service, value))
+                    })
+                    .collect();
 
                 match inconsistent_ok_results.len() {
-                    0 => Err(MultiCallError::InconsistentResults(inconsistent_ok_results)),
-                    1 => Err(MultiCallError::InconsistentResults(inconsistent_ok_results)),
-                    _ => {
-                        let mapped: Vec<(EvmRpcService, T)> = inconsistent_ok_results
-                            .into_iter()
-                            .filter_map(|(rpc_service, result)| {
-                                result.ok().map(|value| (rpc_service, value))
-                            })
-                            .collect();
-                        Ok(mapped)
-                    }
+                    0 => Err(MultiCallError::InconsistentResults(
+                        inconsistent_result.clone(),
+                    )),
+                    1 => Err(MultiCallError::InconsistentResults(
+                        inconsistent_result.clone(),
+                    )),
+                    _ => Ok(inconsistent_ok_results),
                 }
             }
-            _ => Err(self),
+            _ => Err(self.clone()),
         }
     }
 }
@@ -236,7 +234,7 @@ impl<T> From<ReducedResult<T>> for Result<T, MultiCallError<T>> {
     }
 }
 
-impl<T: std::fmt::Debug> ReducedResult<T> {
+impl<T: std::fmt::Debug + std::cmp::PartialEq + Clone> ReducedResult<T> {
     /// Transform a `ReducedResult<T>` into a `ReducedResult<U>` by applying a mapping function `F`.
     /// The mapping function is also applied to the elements contained in the error `MultiCallError::InconsistentResults`.
 
@@ -342,87 +340,89 @@ impl<T: std::fmt::Debug> ReducedResult<T> {
     // The aggregation is performed by grouping results with the same key extracted using the provided extractor function.
     // If a strict majority (more than half) of results share the same value for a key, that value is returned.
     // If no strict majority exists, an error is returned with the inconsistent results.
-    // pub fn reduce_with_strict_majority_by_key<F: Fn(&T) -> K, K: Ord>(self, extractor: F) -> Self {
-    //     match self.result {
-    //         Ok(_) => self,
-    //         Err(multi_error) => match multi_error.at_least_two_ok() {
-    //             Ok(inconsistent_ok_results) => {
-    //                 let mut votes_by_key: BTreeMap<K, BTreeMap<EvmRpcService, T>> = BTreeMap::new();
+    pub fn reduce_with_strict_majority_by_key<F: Fn(&T) -> K, K: Ord>(self, extractor: F) -> Self {
+        match self.result {
+            Ok(_) => self,
+            Err(multi_error) => match multi_error.at_least_two_ok() {
+                Ok(inconsistent_ok_results) => {
+                    let mut votes_by_key: BTreeMap<K, BTreeMap<EvmRpcService, T>> = BTreeMap::new();
+                    for (provider, result) in inconsistent_ok_results.into_iter() {
+                        let key = extractor(&result);
+                        match votes_by_key.remove(&key) {
+                            Some(mut votes_for_same_key) => {
+                                let (_other_provider, other_result) = votes_for_same_key
+                                    .last_key_value()
+                                    .expect("BUG: results_with_same_key is non-empty");
+                                if &result != other_result {
+                                    let error = MultiCallError::InconsistentResults(
+                                        votes_for_same_key
+                                            .into_iter()
+                                            .chain(std::iter::once((provider, result)))
+                                            .map(|(provider, result)| (provider, Ok(result)))
+                                            .collect(),
+                                    );
+                                    log!(INFO,"[reduce_with_strict_majority_by_key]: inconsistent results {error:?}");
+                                    return ReducedResult { result: Err(error) };
+                                }
+                                votes_for_same_key.insert(provider, result);
+                                votes_by_key.insert(key, votes_for_same_key);
+                            }
+                            None => {
+                                let _ =
+                                    votes_by_key.insert(key, BTreeMap::from([(provider, result)]));
+                            }
+                        }
+                    }
+                    let mut tally: Vec<(K, BTreeMap<EvmRpcService, T>)> =
+                        Vec::from_iter(votes_by_key);
+                    tally.sort_unstable_by(
+                        |(_left_key, left_ballot), (_right_key, right_ballot)| {
+                            left_ballot.len().cmp(&right_ballot.len())
+                        },
+                    );
+                    match tally.len() {
+                        0 => panic!("BUG: tally should be non-empty"),
+                        1 => {
+                            return ReducedResult {
+                                result: Ok(tally
+                                    .pop()
+                                    .and_then(|(_key, mut ballot)| ballot.pop_last())
+                                    .expect("BUG: tally is non-empty")
+                                    .1),
+                            }
+                        }
+                        _ => {
+                            let mut first =
+                                tally.pop().expect("BUG: tally has at least 2 elements");
+                            let second = tally.pop().expect("BUG: tally has at least 2 elements");
+                            if first.1.len() > second.1.len() {
+                                return ReducedResult {
+                                    result: Ok(first
+                                        .1
+                                        .pop_last()
+                                        .expect("BUG: tally should be non-empty")
+                                        .1),
+                                };
+                            } else {
+                                let error = MultiCallError::InconsistentResults(
+                                    first
+                                        .1
+                                        .into_iter()
+                                        .chain(second.1)
+                                        .map(|(provider, result)| (provider, Ok(result)))
+                                        .collect(),
+                                );
 
-    //                 self
-    //             }
-    //             Err(error) => ReducedResult { result: Err(error) },
-    //         },
-    //     };
-    //     for (provider, result) in self.at_least_two_ok()?.into_iter() {
-    //         let key = extractor(&result);
-    //         match votes_by_key.remove(&key) {
-    //             Some(mut votes_for_same_key) => {
-    //                 let (_other_provider, other_result) = votes_for_same_key
-    //                     .last_key_value()
-    //                     .expect("BUG: results_with_same_key is non-empty");
-    //                 if &result != other_result {
-    //                     let error = MultiCallError::InconsistentResults(
-    //                         MultiCallResults::from_non_empty_iter(
-    //                             votes_for_same_key
-    //                                 .into_iter()
-    //                                 .chain(std::iter::once((provider, result)))
-    //                                 .map(|(provider, result)| (provider, Ok(result))),
-    //                         ),
-    //                     );
-    //                     log!(
-    //                         INFO,
-    //                         "[reduce_with_strict_majority_by_key]: inconsistent results {error:?}"
-    //                     );
-    //                     return Err(error);
-    //                 }
-    //                 votes_for_same_key.insert(provider, result);
-    //                 votes_by_key.insert(key, votes_for_same_key);
-    //             }
-    //             None => {
-    //                 let _ = votes_by_key.insert(key, BTreeMap::from([(provider, result)]));
-    //             }
-    //         }
-    //     }
-
-    //     let mut tally: Vec<(K, BTreeMap<RpcNodeProvider, T>)> = Vec::from_iter(votes_by_key);
-    //     tally.sort_unstable_by(|(_left_key, left_ballot), (_right_key, right_ballot)| {
-    //         left_ballot.len().cmp(&right_ballot.len())
-    //     });
-    //     match tally.len() {
-    //         0 => panic!("BUG: tally should be non-empty"),
-    //         1 => Ok(tally
-    //             .pop()
-    //             .and_then(|(_key, mut ballot)| ballot.pop_last())
-    //             .expect("BUG: tally is non-empty")
-    //             .1),
-    //         _ => {
-    //             let mut first = tally.pop().expect("BUG: tally has at least 2 elements");
-    //             let second = tally.pop().expect("BUG: tally has at least 2 elements");
-    //             if first.1.len() > second.1.len() {
-    //                 Ok(first
-    //                     .1
-    //                     .pop_last()
-    //                     .expect("BUG: tally should be non-empty")
-    //                     .1)
-    //             } else {
-    //                 let error =
-    //                     MultiCallError::InconsistentResults(MultiCallResults::from_non_empty_iter(
-    //                         first
-    //                             .1
-    //                             .into_iter()
-    //                             .chain(second.1)
-    //                             .map(|(provider, result)| (provider, Ok(result))),
-    //                     ));
-    //                 log!(
-    //                     INFO,
-    //                     "[reduce_with_strict_majority_by_key]: no strict majority {error:?}"
-    //                 );
-    //                 Err(error)
-    //             }
-    //         }
-    //     }
-    // }
+                                log!( INFO,"[reduce_with_strict_majority_by_key]: no strict majority {error:?}");
+                                return ReducedResult { result: Err(error) };
+                            }
+                        }
+                    }
+                }
+                Err(error) => ReducedResult { result: Err(error) },
+            },
+        }
+    }
 }
 
 // Reduce trait implimentation for converting EVM_RPC_CANISTER response into desiered type.
