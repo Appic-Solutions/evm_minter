@@ -1,4 +1,5 @@
 use candid::Nat;
+use evm_rpc_client::types::candid::SendRawTransactionStatus as EvmSendRawTransactionStatus;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -441,4 +442,25 @@ pub struct FeeHistory {
     pub base_fee_per_gas: Vec<WeiPerGas>,
     /// A two-dimensional array of effective priority fees per gas at the requested block percentiles.
     pub reward: Vec<Vec<WeiPerGas>>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub enum SendRawTransactionResult {
+    Ok,
+    InsufficientFunds,
+    NonceTooLow,
+    NonceTooHigh,
+}
+
+impl From<EvmSendRawTransactionStatus> for SendRawTransactionResult {
+    fn from(value: EvmSendRawTransactionStatus) -> Self {
+        match value {
+            EvmSendRawTransactionStatus::Ok(_) => SendRawTransactionResult::Ok,
+            EvmSendRawTransactionStatus::InsufficientFunds => {
+                SendRawTransactionResult::InsufficientFunds
+            }
+            EvmSendRawTransactionStatus::NonceTooLow => SendRawTransactionResult::NonceTooLow,
+            EvmSendRawTransactionStatus::NonceTooHigh => SendRawTransactionResult::NonceTooHigh,
+        }
+    }
 }

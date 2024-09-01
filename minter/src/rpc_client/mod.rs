@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests;
 
-use std::{clone, collections::BTreeMap, fmt::Display, ops::Deref, str::FromStr};
+use std::{
+    clone, collections::BTreeMap, convert::Infallible, fmt::Display, ops::Deref, str::FromStr,
+};
 
 use crate::{
     checked_amount::CheckedAmountOf,
@@ -11,7 +13,8 @@ use crate::{
     numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas},
     rpc_declrations::{
         Block, BlockSpec, BlockTag, Data, FeeHistory, FeeHistoryParams, FixedSizeData,
-        GetLogsParam, Hash, LogEntry, Topic, TransactionReceipt, TransactionStatus,
+        GetLogsParam, Hash, LogEntry, SendRawTransactionResult, Topic, TransactionReceipt,
+        TransactionStatus,
     },
     state::State,
 };
@@ -24,7 +27,8 @@ use evm_rpc_client::{
         FeeHistoryArgs as EvmFeeHistoryArgs, GetLogsArgs as EvmGetLogsArgs, HttpOutcallError,
         LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult, RpcConfig as EvmRpcConfig,
         RpcError as EvmRpcError, RpcResult as EvmRpcResult, RpcService as EvmRpcService,
-        RpcServices as EvmRpcServices, TransactionReceipt as EvmTransactionReceipt,
+        RpcServices as EvmRpcServices, SendRawTransactionStatus as EvmSendRawTransactionStatus,
+        TransactionReceipt as EvmTransactionReceipt,
     },
     CallerService, EvmRpcClient, OverrideRpcConfig,
 };
@@ -208,33 +212,46 @@ impl<T: Clone> MultiCallError<T> {
         }
     }
 
+    // If at there is at least one ok responses
+    // Used for send_raw_transaction since nonce is only valid once
+    fn at_least_one_ok(self) -> Result<(EvmRpcService, T), MultiCallError<T>> {
+        match self {
+            MultiCallError::InconsistentResults(inconsistent_results) => {
+                let inconsistent_ok_results =
+                    filter_inconsistent_ok_results(inconsistent_results.clone());
+                match inconsistent_ok_results.len() {
+                    0 => Err(MultiCallError::InconsistentResults(
+                        inconsistent_results.clone(),
+                    )),
+                    _ => Ok(inconsistent_ok_results.into_iter().next().unwrap()),
+                }
+            }
+            _ => Err(self),
+        }
+    }
+
     // If at there are at least two ok responses
     /// Expects at least 2 ok results to be ok or return the following error:
     /// * MultiCallError::ConsistentJsonRpcError: all errors are the same JSON-RPC error.
     /// * MultiCallError::ConsistentHttpOutcallError: all errors are the same HTTP outcall error.
     /// * MultiCallError::InconsistentResults if there are different errors or an ok result with some errors.
-    pub fn at_least_two_ok(&self) -> Result<Vec<(EvmRpcService, T)>, MultiCallError<T>> {
+    pub fn at_least_two_ok(self) -> Result<Vec<(EvmRpcService, T)>, MultiCallError<T>> {
         match self {
-            MultiCallError::InconsistentResults(inconsistent_result) => {
-                let inconsistent_ok_results: Vec<(EvmRpcService, T)> = inconsistent_result
-                    .clone()
-                    .into_iter()
-                    .filter_map(|(rpc_service, result)| {
-                        result.ok().map(|value| (rpc_service, value))
-                    })
-                    .collect();
+            MultiCallError::InconsistentResults(inconsistent_results) => {
+                let inconsistent_ok_results =
+                    filter_inconsistent_ok_results(inconsistent_results.clone());
 
                 match inconsistent_ok_results.len() {
                     0 => Err(MultiCallError::InconsistentResults(
-                        inconsistent_result.clone(),
+                        inconsistent_results.clone(),
                     )),
                     1 => Err(MultiCallError::InconsistentResults(
-                        inconsistent_result.clone(),
+                        inconsistent_results.clone(),
                     )),
                     _ => Ok(inconsistent_ok_results),
                 }
             }
-            _ => Err(self.clone()),
+            _ => Err(self),
         }
     }
 }
@@ -360,7 +377,7 @@ impl<T: std::fmt::Debug + std::cmp::PartialEq + Clone> ReducedResult<T> {
 
     // If Inconsistent, Aggregates results from multiple RPC node providers into a single result based on a strict majority rule.
     // The aggregation is performed by grouping results with the same key extracted using the provided extractor function.
-    // If a strict majority (more than half) of results share the same value for a key, that value is returned.
+    // If a stricpt majority (more than half) of results share the same value for a key, that value is returned.
     // If no strict majority exists, an error is returned with the inconsistent results.
     pub fn reduce_with_strict_majority_by_key<F: Fn(&T) -> K, K: Ord>(self, extractor: F) -> Self {
         match self.result {
@@ -442,6 +459,21 @@ impl<T: std::fmt::Debug + std::cmp::PartialEq + Clone> ReducedResult<T> {
                     }
                 }
                 Err(error) => ReducedResult { result: Err(error) },
+            },
+        }
+    }
+
+    // Used for send raw transaction, if inconsistent searches only for one Ok result since there will be only one ok result becuase multiple nonces should be unique
+    pub fn reduce_with_only_one_key(self) -> Self {
+        match self.result {
+            Ok(_) => self,
+            Err(error) => match error.at_least_one_ok() {
+                Ok(desired_result) => ReducedResult {
+                    result: Ok(desired_result.1),
+                },
+                Err(multicall_error) => ReducedResult {
+                    result: Err(multicall_error),
+                },
             },
         }
     }
@@ -570,6 +602,21 @@ impl Reduce for EvmMultiRpcResult<Option<EvmFeeHistory>> {
     }
 }
 
+impl Reduce for EvmMultiRpcResult<EvmSendRawTransactionStatus> {
+    type Item = SendRawTransactionResult;
+
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        let mapped_send_raw_transaction = ReducedResult::from_multi_result(self)
+            .map_reduce(&|tx_status| {
+                Ok::<SendRawTransactionResult, Infallible>(SendRawTransactionResult::from(
+                    tx_status,
+                ))
+            })
+            .reduce_with_only_one_key();
+        mapped_send_raw_transaction
+    }
+}
+
 fn into_evm_block_tag(block: BlockSpec) -> EvmBlockTag {
     match block {
         BlockSpec::Number(n) => EvmBlockTag::Number(n.into()),
@@ -599,4 +646,13 @@ pub fn is_response_too_large(error: &HttpOutcallError) -> bool {
         }
         _ => false,
     }
+}
+
+pub fn filter_inconsistent_ok_results<T>(
+    inconsistent_results: Vec<(EvmRpcService, Result<T, SingleCallError>)>,
+) -> Vec<(EvmRpcService, T)> {
+    inconsistent_results
+        .into_iter()
+        .filter_map(|(rpc_service, result)| result.ok().map(|value| (rpc_service, value)))
+        .collect()
 }
