@@ -10,7 +10,7 @@ use crate::{
     eth_types::Address,
     lifecycles::EvmNetwork,
     logs::{PrintProxySink, DEBUG, INFO, TRACE_HTTP},
-    numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas},
+    numeric::{BlockNumber, GasAmount, LogIndex, TransactionCount, Wei, WeiPerGas},
     rpc_declrations::{
         Block, BlockSpec, BlockTag, Data, FeeHistory, FeeHistoryParams, FixedSizeData,
         GetLogsParam, Hash, LogEntry, SendRawTransactionResult, Topic, TransactionReceipt,
@@ -24,7 +24,8 @@ use ic_canister_log::log;
 use evm_rpc_client::{
     types::candid::{
         Block as EvmBlock, BlockTag as EvmBlockTag, EthSepoliaService, FeeHistory as EvmFeeHistory,
-        FeeHistoryArgs as EvmFeeHistoryArgs, GetLogsArgs as EvmGetLogsArgs, HttpOutcallError,
+        FeeHistoryArgs as EvmFeeHistoryArgs, GetLogsArgs as EvmGetLogsArgs,
+        GetTransactionCountArgs as EvmGetTransactionCountArgs, HttpOutcallError,
         LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult, RpcConfig as EvmRpcConfig,
         RpcError as EvmRpcError, RpcResult as EvmRpcResult, RpcService as EvmRpcService,
         RpcServices as EvmRpcServices, SendRawTransactionStatus as EvmSendRawTransactionStatus,
@@ -151,6 +152,47 @@ impl RpcClient {
                 .await
                 .reduce();
             return result.result;
+        } else {
+            Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
+                "EVM RPC canister can not be None",
+            )))
+        }
+    }
+
+    pub async fn eth_get_finalized_transaction_count(
+        &self,
+        address: Address,
+    ) -> Result<TransactionCount, MultiCallError<TransactionCount>> {
+        if let Some(evm_rpc_client) = &self.evm_rpc_client {
+            let results = evm_rpc_client
+                .eth_get_transaction_count(EvmGetTransactionCountArgs {
+                    address: address.to_string(),
+                    block: EvmBlockTag::Finalized,
+                })
+                .await;
+            return results.reduce().reduce_with_equality().result;
+        } else {
+            Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
+                "EVM RPC canister can not be None",
+            )))
+        }
+    }
+
+    pub async fn eth_get_latest_transaction_count(
+        &self,
+        address: Address,
+    ) -> Result<TransactionCount, MultiCallError<TransactionCount>> {
+        if let Some(evm_rpc_client) = &self.evm_rpc_client {
+            let results = evm_rpc_client
+                .eth_get_transaction_count(EvmGetTransactionCountArgs {
+                    address: address.to_string(),
+                    block: EvmBlockTag::Latest,
+                })
+                .await;
+            return results
+                .reduce()
+                .reduce_with_min_by_key(|transaction_count| *transaction_count)
+                .result;
         } else {
             Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
                 "EVM RPC canister can not be None",
@@ -477,6 +519,28 @@ impl<T: std::fmt::Debug + std::cmp::PartialEq + Clone> ReducedResult<T> {
             },
         }
     }
+
+    // If inconsistent returns the key with the minimum value
+    pub fn reduce_with_min_by_key<F: FnMut(&T) -> K, K: Ord>(self, extractor: F) -> Self {
+        match self.result {
+            Ok(_) => self,
+            Err(error) => match error.at_least_two_ok() {
+                Ok(ok_results) => {
+                    let mapped_to_consistent = ok_results
+                        .into_iter()
+                        .map(|(_rpc_service, result)| result)
+                        .min_by_key(extractor)
+                        .expect("BUG: ok_results is guaranteed to be non-empty");
+                    return ReducedResult {
+                        result: Ok(mapped_to_consistent),
+                    };
+                }
+                Err(multi_call_error) => ReducedResult {
+                    result: Err(multi_call_error),
+                },
+            },
+        }
+    }
 }
 
 // Reduce trait implimentation for converting EVM_RPC_CANISTER response into desiered type.
@@ -614,6 +678,16 @@ impl Reduce for EvmMultiRpcResult<EvmSendRawTransactionStatus> {
             })
             .reduce_with_only_one_key();
         mapped_send_raw_transaction
+    }
+}
+
+// Transaction Count reduction
+impl Reduce for EvmMultiRpcResult<Nat> {
+    type Item = TransactionCount;
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        let mapped_transaction_count = ReducedResult::from_multi_result(self)
+            .map_reduce(&|transaction_count: Nat| TransactionCount::try_from(transaction_count));
+        mapped_transaction_count
     }
 }
 
