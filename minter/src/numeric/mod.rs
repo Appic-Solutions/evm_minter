@@ -13,8 +13,8 @@ pub enum Erc20Tag {}
 pub type Erc20Value = CheckedAmountOf<Erc20Tag>;
 
 /// Amount of CK token using their smallest denomination.
-pub enum CkTokenAmountTag {}
-pub type CkTokenAmount = CheckedAmountOf<CkTokenAmountTag>;
+pub enum Erc20TokenAmountTag {}
+pub type Erc20TokenAmount = CheckedAmountOf<Erc20TokenAmountTag>;
 
 pub enum WeiPerGasUnit {}
 pub type WeiPerGas = CheckedAmountOf<WeiPerGasUnit>;

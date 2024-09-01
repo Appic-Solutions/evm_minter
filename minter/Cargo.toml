@@ -11,6 +11,7 @@ ic-canister-log = "0.2.0"
 ic-cdk = "0.13.2"
 ic-stable-structures="0.6.5"
 ic-crypto-sha3={ git = "https://github.com/dfinity/ic.git"}
+icrc-ledger-types={ git = "https://github.com/dfinity/ic.git"}
 phantom_newtype={ git = "https://github.com/dfinity/ic.git"}
 evm_rpc_client = { path = "../evm_rpc_client" }
 

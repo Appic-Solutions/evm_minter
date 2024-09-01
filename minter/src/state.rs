@@ -1,6 +1,6 @@
 pub mod audit;
 pub mod event;
-
+pub mod transactions;
 use std::{
     cell::RefCell,
     collections::{btree_map, BTreeMap, BTreeSet, HashSet},
@@ -88,8 +88,10 @@ pub struct State {
     pub events_to_mint: BTreeMap<EventSource, ReceivedDepositEvent>,
     pub minted_events: BTreeMap<EventSource, MintedEvent>,
     pub invalid_events: BTreeMap<EventSource, InvalidEventReason>,
+
     // pub eth_transactions: EthTransactions,
     pub skipped_blocks: BTreeSet<BlockNumber>,
+
     /// Current balance of ETH held by the minter.
     /// Computed based on audit events.
     pub eth_balance: NativeBalance,
@@ -99,7 +101,8 @@ pub struct State {
     pub erc20_balances: Erc20Balances,
 
     // /// Per-principal lock for pending withdrawals
-    // pub pending_withdrawal_principals: BTreeSet<Principal>,
+    pub pending_withdrawal_principals: BTreeSet<Principal>,
+
     /// Locks preventing concurrent execution timer tasks
     pub active_tasks: HashSet<TaskType>,
     // /// Number of HTTP outcalls since the last upgrade.
