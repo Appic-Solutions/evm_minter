@@ -1,4 +1,5 @@
-use crate::numeric::LedgerMintIndex;
+use crate::map::MultiKeyMap;
+use crate::numeric::{LedgerMintIndex, TransactionNonce};
 use crate::rpc_declrations::Hash;
 use crate::{
     checked_amount::CheckedAmountOf,
@@ -9,6 +10,7 @@ use candid::Principal;
 use icrc_ledger_types::icrc1::account::Account;
 use minicbor::{Decode, Encode};
 use serde::de::value;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode)]
@@ -24,7 +26,7 @@ impl fmt::Debug for Subaccount {
 /// Naticve token withdrawal request issued by the user.
 #[derive(Clone, Eq, PartialEq, Encode, Decode)]
 pub struct NativeWithdrawlRequest {
-    /// The ETH amount that the receiver will get, not accounting for the Ethereum transaction fees.
+    /// The NAtive token amount that the receiver will get, not accounting for the EVM transaction fees.
     #[n(0)]
     pub withdrawal_amount: Wei,
     /// The address to which the minter will send ETH.
@@ -47,7 +49,7 @@ pub struct NativeWithdrawlRequest {
 /// ERC-20 withdrawal request issued by the user.
 #[derive(Clone, Eq, PartialEq, Encode, Decode)]
 pub struct Erc20WithdrawalRequest {
-    /// Amount of burn Native token that can be used to pay for the Ethereum transaction fees.
+    /// Amount of burn Native token that can be used to pay for the EVM transaction fees.
     #[n(0)]
     pub max_transaction_fee: Wei,
     /// The ERC-20 amount that the receiver will get.
@@ -261,4 +263,37 @@ pub enum ReimbursedError {
     /// The reimbursement request is quarantined to avoid any double minting and
     /// will not be further processed without manual intervention.
     Quarantined,
+}
+
+/// State machine holding EVM transactions issued by the minter.
+/// Overall the transaction lifecycle is as follows:
+/// 1. The user's withdrawal request is enqueued and processed in a FIFO order.
+/// 2. A transaction is created by either consuming a withdrawal request
+///    (the first time a transaction is created for that nonce and burn index)
+///    or re-submitting an already sent transaction for that nonce and burn index.
+/// 3. The transaction is signed via threshold ECDSA and recorded by either consuming the
+///    previously created transaction or re-submitting an already sent transaction as is.
+/// 4. The transaction is sent to EVM. There may have been multiple
+///    sent transactions for that nonce and burn index in case of resubmissions.
+/// 5. For a given nonce (and burn index), at most one sent transaction is finalized.
+///    The others sent transactions for that nonce were never mined and can be discarded.
+/// 6. If a given transaction fails the minter will reimburse the user who requested the
+///    withdrawal with the corresponding amount minus fees.
+/// #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Transactions {
+    pub(in crate::state) pending_withdrawal_requests: VecDeque<WithdrawalRequest>,
+    // Processed withdrawal requests (transaction created, sent, or finalized).
+    pub(in crate::state) processed_withdrawal_requests:
+        BTreeMap<LedgerBurnIndex, WithdrawalRequest>,
+    pub(in crate::state) created_tx:
+        MultiKeyMap<TransactionNonce, LedgerBurnIndex, TransactionRequest>,
+    pub(in crate::state) sent_tx:
+        MultiKeyMap<TransactionNonce, LedgerBurnIndex, Vec<SignedTransactionRequest>>,
+    pub(in crate::state) finalized_tx:
+        MultiKeyMap<TransactionNonce, LedgerBurnIndex, FinalizedEip1559Transaction>,
+    pub(in crate::state) next_nonce: TransactionNonce,
+
+    pub(in crate::state) maybe_reimburse: BTreeSet<LedgerBurnIndex>,
+    pub(in crate::state) reimbursement_requests: BTreeMap<ReimbursementIndex, ReimbursementRequest>,
+    pub(in crate::state) reimbursed: BTreeMap<ReimbursementIndex, ReimbursedResult>,
 }

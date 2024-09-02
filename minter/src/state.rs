@@ -19,6 +19,7 @@ use crate::{
     map::DedupMultiKeyMap,
     numeric::{BlockNumber, Erc20Value, LedgerMintIndex, Wei},
     rpc_declrations::{BlockTag, FixedSizeData},
+    tx::GasFeeEstimate,
 };
 use ic_cdk::api::management_canister::ecdsa::EcdsaPublicKeyResponse;
 
@@ -108,8 +109,7 @@ pub struct State {
     // /// Number of HTTP outcalls since the last upgrade.
     // /// Used to correlate request and response in logs.
     // pub http_request_counter: u64,
-
-    // pub last_transaction_price_estimate: Option<(u64, GasFeeEstimate)>,
+    pub last_transaction_price_estimate: Option<(u64, GasFeeEstimate)>,
 
     // /// Canister ID of the ledger suite orchestrator that
     // /// can add new ERC-20 token to the minter
