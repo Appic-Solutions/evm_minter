@@ -17,7 +17,7 @@ use crate::{
     eth_types::Address,
     lifecycles::EvmNetwork,
     map::DedupMultiKeyMap,
-    numeric::{BlockNumber, Erc20Value, LedgerMintIndex, Wei},
+    numeric::{BlockNumber, Erc20Value, LedgerMintIndex, Wei, WeiPerGas},
     rpc_declrations::{BlockTag, FixedSizeData},
     tx::GasFeeEstimate,
 };
@@ -124,6 +124,8 @@ pub struct State {
     // /// - secondary key: ERC-20 contract address on Ethereum
     // /// - value: ckERC20 token symbol
     pub erc20_tokens: DedupMultiKeyMap<Principal, Address, ERC20TokenSymbol>,
+
+    pub min_max_priority_fee_per_gas: WeiPerGas,
 }
 
 impl State {

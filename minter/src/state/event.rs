@@ -7,6 +7,8 @@ use crate::{
     numeric::BlockNumber,
 };
 
+use super::transactions::{Erc20WithdrawalRequest, NativeWithdrawlRequest};
+
 /// The event describing the ckETH minter state transition.
 #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq)]
 pub enum EventType {
@@ -48,8 +50,8 @@ pub enum EventType {
     //     block_number: BlockNumber,
     // },
     // /// The minter accepted a new ETH withdrawal request.
-    // #[n(7)]
-    // AcceptedEthWithdrawalRequest(#[n(0)] EthWithdrawalRequest),
+    #[n(7)]
+    AcceptedNativeWithdrawalRequest(#[n(0)] NativeWithdrawlRequest),
     // /// The minter created a new transaction to handle a withdrawal request.
     // #[n(8)]
     // CreatedTransaction {
@@ -99,8 +101,8 @@ pub enum EventType {
     #[n(15)]
     AcceptedErc20Deposit(#[n(0)] ReceivedErc20Event),
     // /// The minter accepted a new ERC-20 withdrawal request.
-    // #[n(16)]
-    // AcceptedErc20WithdrawalRequest(#[n(0)] Erc20WithdrawalRequest),
+    #[n(16)]
+    AcceptedErc20WithdrawalRequest(#[n(0)] Erc20WithdrawalRequest),
     // #[n(17)]
     // MintedCkErc20 {
     //     /// The unique identifier of the deposit on the Ethereum network.

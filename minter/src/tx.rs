@@ -823,7 +823,8 @@ pub enum TransactionFeeEstimationError {
 pub fn estimate_transaction_fee(
     fee_history: &FeeHistory,
 ) -> Result<GasFeeEstimate, TransactionFeeEstimationError> {
-    const MIN_MAX_PRIORITY_FEE_PER_GAS: WeiPerGas = WeiPerGas::new(1_500_000_000); // 1.5 gwei
+    let min_max_priority_fee_per_gas: WeiPerGas =
+        read_state(|state| state.min_max_priority_fee_per_gas); // Different on each network
 
     let base_fee_per_gas_next_block = *fee_history.base_fee_per_gas.last().ok_or(
         TransactionFeeEstimationError::InvalidFeeHistory(
@@ -838,7 +839,7 @@ pub fn estimate_transaction_fee(
             **median(&mut rewards).ok_or(TransactionFeeEstimationError::InvalidFeeHistory(
                 "should be non-empty with rewards of the last 5 blocks".to_string(),
             ))?;
-        historic_max_priority_fee_per_gas.max(MIN_MAX_PRIORITY_FEE_PER_GAS)
+        historic_max_priority_fee_per_gas.max(min_max_priority_fee_per_gas)
     };
 
     let gas_fee_estimate = GasFeeEstimate {

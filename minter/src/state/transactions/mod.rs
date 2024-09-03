@@ -1,6 +1,7 @@
 use crate::map::MultiKeyMap;
 use crate::numeric::{LedgerMintIndex, TransactionNonce};
 use crate::rpc_declrations::Hash;
+use crate::tx::{FinalizedEip1559Transaction, SignedTransactionRequest, TransactionRequest};
 use crate::{
     checked_amount::CheckedAmountOf,
     eth_types::Address,
@@ -12,6 +13,8 @@ use minicbor::{Decode, Encode};
 use serde::de::value;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
+
+use super::audit::EventType;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode)]
 #[cbor(transparent)]
@@ -129,7 +132,7 @@ impl fmt::Debug for Erc20WithdrawalRequest {
             .field("withdrawal_amount", withdrawal_amount)
             .field("erc20_contract_address", erc20_contract_address)
             .field("destination", destination)
-            .field("cketh_ledger_burn_index", native_ledger_burn_index)
+            .field("native_ledger_burn_index", native_ledger_burn_index)
             .field("ckerc20_ledger_id", &DebugPrincipal(erc20_ledger_id))
             .field("ckerc20_ledger_burn_index", erc20_ledger_burn_index)
             .field("from", &DebugPrincipal(from))
@@ -150,6 +153,72 @@ pub enum WithdrawalSearchParameter {
 pub enum WithdrawalRequest {
     Native(NativeWithdrawlRequest),
     Erc20(Erc20WithdrawalRequest),
+}
+
+impl WithdrawalRequest {
+    pub fn native_ledger_burn_index(&self) -> LedgerBurnIndex {
+        match self {
+            WithdrawalRequest::Native(request) => request.ledger_burn_index,
+            WithdrawalRequest::Erc20(request) => request.native_ledger_burn_index,
+        }
+    }
+
+    pub fn created_at(&self) -> Option<u64> {
+        match self {
+            WithdrawalRequest::Native(request) => request.created_at,
+            WithdrawalRequest::Erc20(request) => Some(request.created_at),
+        }
+    }
+
+    /// Address to which the funds are to be sent to.
+    pub fn payee(&self) -> Address {
+        match self {
+            WithdrawalRequest::Native(request) => request.destination,
+            WithdrawalRequest::Erc20(request) => request.destination,
+        }
+    }
+
+    /// Address to which the transaction is to be sent to.
+    pub fn destination(&self) -> Address {
+        match self {
+            WithdrawalRequest::Native(request) => request.destination,
+            WithdrawalRequest::Erc20(request) => request.erc20_contract_address,
+        }
+    }
+
+    pub fn from(&self) -> Principal {
+        match self {
+            WithdrawalRequest::Native(request) => request.from,
+            WithdrawalRequest::Erc20(request) => request.from,
+        }
+    }
+
+    pub fn from_subaccount(&self) -> &Option<Subaccount> {
+        match self {
+            WithdrawalRequest::Native(request) => &request.from_subaccount,
+            WithdrawalRequest::Erc20(request) => &request.from_subaccount,
+        }
+    }
+
+    pub fn into_accepted_withdrawal_request_event(self) -> EventType {
+        match self {
+            WithdrawalRequest::Native(request) => {
+                EventType::AcceptedNativeWithdrawalRequest(request)
+            }
+            WithdrawalRequest::Erc20(request) => EventType::AcceptedErc20WithdrawalRequest(request),
+        }
+    }
+
+    pub fn match_parameter(&self, parameter: &WithdrawalSearchParameter) -> bool {
+        use WithdrawalSearchParameter::*;
+        match parameter {
+            ByWithdrawalId(index) => &self.native_ledger_burn_index() == index,
+            ByRecipient(address) => &self.payee() == address,
+            BySenderAccount(Account { owner, subaccount }) => {
+                &self.from() == owner && self.from_subaccount() == &subaccount.map(Subaccount)
+            }
+        }
+    }
 }
 
 impl From<NativeWithdrawlRequest> for WithdrawalRequest {
@@ -296,4 +365,111 @@ pub struct Transactions {
     pub(in crate::state) maybe_reimburse: BTreeSet<LedgerBurnIndex>,
     pub(in crate::state) reimbursement_requests: BTreeMap<ReimbursementIndex, ReimbursementRequest>,
     pub(in crate::state) reimbursed: BTreeMap<ReimbursementIndex, ReimbursedResult>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CreateTransactionError {
+    InsufficientTransactionFee {
+        native_ledger_burn_index: LedgerBurnIndex,
+        allowed_max_transaction_fee: Wei,
+        actual_max_transaction_fee: Wei,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ResubmitTransactionError {
+    InsufficientTransactionFee {
+        ledger_burn_index: LedgerBurnIndex,
+        transaction_nonce: TransactionNonce,
+        allowed_max_transaction_fee: Wei,
+        max_transaction_fee: Wei,
+    },
+}
+
+impl Transactions {
+    pub fn new(next_nonce: TransactionNonce) -> Self {
+        Self {
+            pending_withdrawal_requests: VecDeque::new(),
+            processed_withdrawal_requests: BTreeMap::new(),
+            created_tx: MultiKeyMap::default(),
+            sent_tx: MultiKeyMap::default(),
+            finalized_tx: MultiKeyMap::default(),
+            next_nonce,
+            maybe_reimburse: Default::default(),
+            reimbursement_requests: Default::default(),
+            reimbursed: Default::default(),
+        }
+    }
+
+    pub fn next_transaction_nonce(&self) -> TransactionNonce {
+        self.next_nonce
+    }
+
+    pub fn update_next_transaction_nonce(&mut self, new_nonce: TransactionNonce) {
+        self.next_nonce = new_nonce;
+    }
+
+    pub fn reimbursement_requests_iter(
+        &self,
+    ) -> impl Iterator<Item = (&ReimbursementIndex, &ReimbursementRequest)> {
+        self.reimbursement_requests.iter()
+    }
+
+    pub fn reimbursed_transactions_iter(
+        &self,
+    ) -> impl Iterator<Item = (&ReimbursementIndex, &ReimbursedResult)> {
+        self.reimbursed.iter()
+    }
+
+    fn find_reimbursed_transaction_by_native_token_ledger_burn_index(
+        &self,
+        searched_burn_index: &LedgerBurnIndex,
+    ) -> Option<&ReimbursedResult> {
+        self.reimbursed
+            .iter()
+            .find_map(|(index, value)| match index {
+                ReimbursementIndex::Native { ledger_burn_index }
+                    if ledger_burn_index == searched_burn_index =>
+                {
+                    Some(value)
+                }
+                ReimbursementIndex::Erc20 {
+                    native_ledger_burn_index,
+                    ..
+                } if native_ledger_burn_index == searched_burn_index => Some(value),
+                _ => None,
+            })
+    }
+
+    pub fn record_withdrawal_request<R: Into<WithdrawalRequest>>(&mut self, request: R) {
+        let request: WithdrawalRequest = request.into();
+        let burn_index = request.native_ledger_burn_index();
+        if self
+            .pending_withdrawal_requests
+            .iter()
+            .any(|r| r.native_ledger_burn_index() == burn_index)
+            || self.created_tx.contains_alt(&burn_index)
+            || self.sent_tx.contains_alt(&burn_index)
+            || self.finalized_tx.contains_alt(&burn_index)
+        {
+            panic!("BUG: duplicate Native ledger burn index {burn_index}");
+        }
+        self.pending_withdrawal_requests.push_back(request);
+    }
+
+    /// Move an existing withdrawal request to the back of the queue.
+    pub fn reschedule_withdrawal_request<R: Into<WithdrawalRequest>>(&mut self, request: R) {
+        let request = request.into();
+        assert_eq!(
+            self.pending_withdrawal_requests
+                .iter()
+                .filter(|r| r.native_ledger_burn_index() == request.native_ledger_burn_index())
+                .count(),
+            1,
+            "BUG: expected exactly one withdrawal request with ckETH ledger burn index {}",
+            request.native_ledger_burn_index()
+        );
+        self.remove_withdrawal_request(&request);
+        self.record_withdrawal_request(request);
+    }
 }
