@@ -61,11 +61,11 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
         // EventType::SyncedErc20ToBlock { block_number } => {
         //     state.last_erc20_scraped_block_number = *block_number;
         // }
-        // EventType::AcceptedEthWithdrawalRequest(request) => {
-        //     state
-        //         .eth_transactions
-        //         .record_withdrawal_request(request.clone());
-        // }
+        EventType::AcceptedNativeWithdrawalRequest(request) => {
+            state
+                .withdrawal_transactions
+                .record_withdrawal_request(request.clone());
+        }
         // EventType::CreatedTransaction {
         //     withdrawal_id,
         //     transaction,
@@ -112,12 +112,11 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
         EventType::SkippedBlock { block_number } => {
             state.record_skipped_block(*block_number);
         } // EventType::AddedCkErc20Token(ckerc20_token) => {
-          //     state.record_add_ckerc20_token(ckerc20_token.clone());
-          // }
-          // EventType::AcceptedErc20WithdrawalRequest(request) => {
-          //     state.record_erc20_withdrawal_request(request.clone())
-          // }
-          // EventType::ReimbursedErc20Withdrawal {
+        //     state.record_add_ckerc20_token(ckerc20_token.clone());
+        // }
+        EventType::AcceptedErc20WithdrawalRequest(request) => {
+            state.record_erc20_withdrawal_request(request.clone())
+        } // EventType::ReimbursedErc20Withdrawal {
           //     cketh_ledger_burn_index,
           //     ckerc20_ledger_id,
           //     reimbursed,

@@ -569,7 +569,7 @@ dependencies = [
 [[package]]
 name = "ic-base-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "byte-unit",
  "bytes",
@@ -596,7 +596,7 @@ dependencies = [
 [[package]]
 name = "ic-btc-replica-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "candid",
  "ic-btc-interface",
@@ -645,7 +645,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-sha2"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "sha2",
 ]
@@ -653,7 +653,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-secp256k1"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "hmac",
  "k256",
@@ -669,7 +669,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-sha2"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "ic-crypto-internal-sha2",
 ]
@@ -677,7 +677,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-sha3"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "sha3",
 ]
@@ -685,7 +685,7 @@ dependencies = [
 [[package]]
 name = "ic-error-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "ic-protobuf",
  "ic-utils",
@@ -697,7 +697,7 @@ dependencies = [
 [[package]]
 name = "ic-management-canister-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "candid",
  "ic-base-types",
@@ -717,7 +717,7 @@ dependencies = [
 [[package]]
 name = "ic-protobuf"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "bincode",
  "candid",
@@ -740,13 +740,18 @@ dependencies = [
 [[package]]
 name = "ic-utils"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "hex",
  "scoped_threadpool",
  "serde",
  "serde_bytes",
 ]
+
+[[package]]
+name = "ic-utils-ensure"
+version = "0.9.0"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 
 [[package]]
 name = "ic0"
@@ -770,7 +775,7 @@ dependencies = [
 [[package]]
 name = "icrc-ledger-types"
 version = "0.1.6"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "base32",
  "candid",
@@ -916,6 +921,7 @@ dependencies = [
  "ic-crypto-sha3",
  "ic-management-canister-types",
  "ic-stable-structures",
+ "ic-utils-ensure",
  "icrc-ledger-types",
  "minicbor",
  "minicbor-derive",
@@ -1071,7 +1077,7 @@ dependencies = [
 [[package]]
 name = "phantom_newtype"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#f72f9e39543ba13f48b2f4b8161b79b179a0b664"
+source = "git+https://github.com/dfinity/ic.git#b580f5267f2d23adabb9dba432b890a10fb9a9ba"
 dependencies = [
  "candid",
  "serde",

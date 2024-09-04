@@ -10,6 +10,7 @@ use std::{
 
 use candid::Principal;
 use hex_literal::hex;
+use transactions::WithdrawalTransactions;
 
 use crate::{
     deposit_logs::{EventSource, ReceivedDepositEvent},
@@ -90,15 +91,15 @@ pub struct State {
     pub minted_events: BTreeMap<EventSource, MintedEvent>,
     pub invalid_events: BTreeMap<EventSource, InvalidEventReason>,
 
-    // pub eth_transactions: EthTransactions,
+    pub withdrawal_transactions: WithdrawalTransactions,
     pub skipped_blocks: BTreeSet<BlockNumber>,
 
-    /// Current balance of ETH held by the minter.
-    /// Computed based on audit events.
-    pub eth_balance: NativeBalance,
+    // Current balance of Native held by the minter.
+    // Computed based on audit events.
+    pub native_balance: NativeBalance,
 
-    /// Current balance of ERC-20 tokens held by the minter.
-    /// Computed based on audit events.
+    // Current balance of ERC-20 tokens held by the minter.
+    // Computed based on audit events.
     pub erc20_balances: Erc20Balances,
 
     // /// Per-principal lock for pending withdrawals
@@ -106,8 +107,8 @@ pub struct State {
 
     /// Locks preventing concurrent execution timer tasks
     pub active_tasks: HashSet<TaskType>,
-    // /// Number of HTTP outcalls since the last upgrade.
-    // /// Used to correlate request and response in logs.
+    /// Number of HTTP outcalls since the last upgrade.
+    /// Used to correlate request and response in logs.
     // pub http_request_counter: u64,
     pub last_transaction_price_estimate: Option<(u64, GasFeeEstimate)>,
 
@@ -118,11 +119,10 @@ pub struct State {
     // /// Canister ID of the EVM RPC canister that
     // /// handles communication with Ethereum
     // pub evm_rpc_id: Option<Principal>,
-
-    // /// ERC-20 tokens that the minter can mint:
-    // /// - primary key: ledger ID for the ckERC20 token
-    // /// - secondary key: ERC-20 contract address on Ethereum
-    // /// - value: ckERC20 token symbol
+    /// ERC-20 tokens that the minter can mint:
+    /// - primary key: ledger ID for the ERC20 token
+    /// - secondary key: ERC-20 contract address on Ethereum
+    /// - value: ERC20 token symbol
     pub erc20_tokens: DedupMultiKeyMap<Principal, Address, ERC20TokenSymbol>,
 
     pub min_max_priority_fee_per_gas: WeiPerGas,
@@ -194,7 +194,7 @@ impl State {
 
     fn update_balance_upon_deposit(&mut self, event: &ReceivedDepositEvent) {
         match event {
-            ReceivedDepositEvent::Native(event) => self.eth_balance.eth_balance_add(event.value),
+            ReceivedDepositEvent::Native(event) => self.native_balance.eth_balance_add(event.value),
             ReceivedDepositEvent::Erc20(event) => self
                 .erc20_balances
                 .erc20_add(event.erc20_contract_address, event.value),
@@ -227,7 +227,7 @@ pub struct NativeBalance {
     /// or retrieved by the JSON-RPC call `eth_getBalance`.
     /// Also, some transactions may have gone directly to the minter's address
     /// without going via the helper smart contract.
-    eth_balance: Wei,
+    native_balance: Wei,
     /// Total amount of fees across all finalized transactions icNative -> Native. cconversion of twin native token to token on the home chain.
     total_effective_tx_fees: Wei,
     /// Total amount of fees that were charged to the user during the withdrawal
@@ -238,7 +238,7 @@ pub struct NativeBalance {
 impl Default for NativeBalance {
     fn default() -> Self {
         Self {
-            eth_balance: Wei::ZERO,
+            native_balance: Wei::ZERO,
             total_effective_tx_fees: Wei::ZERO,
             total_unspent_tx_fees: Wei::ZERO,
         }
@@ -247,19 +247,19 @@ impl Default for NativeBalance {
 
 impl NativeBalance {
     fn eth_balance_add(&mut self, value: Wei) {
-        self.eth_balance = self.eth_balance.checked_add(value).unwrap_or_else(|| {
+        self.native_balance = self.native_balance.checked_add(value).unwrap_or_else(|| {
             panic!(
                 "BUG: overflow when adding {} to {}",
-                value, self.eth_balance
+                value, self.native_balance
             )
         })
     }
 
     fn eth_balance_sub(&mut self, value: Wei) {
-        self.eth_balance = self.eth_balance.checked_sub(value).unwrap_or_else(|| {
+        self.native_balance = self.native_balance.checked_sub(value).unwrap_or_else(|| {
             panic!(
                 "BUG: underflow when subtracting {} from {}",
-                value, self.eth_balance
+                value, self.native_balance
             )
         })
     }
@@ -288,8 +288,8 @@ impl NativeBalance {
             })
     }
 
-    pub fn eth_balance(&self) -> Wei {
-        self.eth_balance
+    pub fn native_balance(&self) -> Wei {
+        self.native_balance
     }
 
     pub fn total_effective_tx_fees(&self) -> Wei {
