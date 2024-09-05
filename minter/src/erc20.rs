@@ -3,6 +3,8 @@
 // #[cfg(test)]
 // mod tests;
 
+use crate::eth_types::Address;
+use crate::lifecycles::EvmNetwork;
 // use crate::endpoints::AddCkErc20Token;
 // use crate::lifecycle::EthereumNetwork;
 use crate::state::State;
@@ -12,19 +14,19 @@ use num_traits::ToPrimitive;
 use std::fmt::Display;
 use std::str::FromStr;
 
-pub const MAX_CK_TOKEN_SYMBOL_NUM_BYTES: usize = 20;
+pub const MAX_ERC20_TOKEN_SYMBOL_NUM_BYTES: usize = 20;
 
-// #[derive(Clone, Debug, Eq, PartialEq, Encode, Decode)]
-// pub struct CkErc20Token {
-//     #[n(0)]
-//     pub erc20_ethereum_network: EthereumNetwork,
-//     #[n(1)]
-//     pub erc20_contract_address: Address,
-//     #[n(2)]
-//     pub ckerc20_token_symbol: CkTokenSymbol,
-//     #[cbor(n(3), with = "crate::cbor::principal")]
-//     pub ckerc20_ledger_id: Principal,
-// }
+#[derive(Clone, Debug, Eq, PartialEq, Encode, Decode)]
+pub struct ERC20Token {
+    #[n(0)]
+    pub chain_id: EvmNetwork,
+    #[n(1)]
+    pub erc20_contract_address: Address,
+    #[n(2)]
+    pub erc20_token_symbol: ERC20TokenSymbol,
+    #[cbor(n(3), with = "crate::cbor::principal")]
+    pub erc20_ledger_id: Principal,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Encode, Decode)]
 #[cbor(transparent)]
@@ -36,26 +38,23 @@ impl Display for ERC20TokenSymbol {
     }
 }
 
-// impl FromStr for CkTokenSymbol {
-//     type Err = String;
+impl FromStr for ERC20TokenSymbol {
+    type Err = String;
 
-//     fn from_str(token_symbol: &str) -> Result<Self, Self::Err> {
-//         if !token_symbol.starts_with("ck") {
-//             return Err("ERROR: token symbol does not start with 'ck' prefix".to_string());
-//         }
-//         if token_symbol.len() > MAX_CK_TOKEN_SYMBOL_NUM_BYTES {
-//             return Err(format!(
-//                 "ERROR: token symbol is too long: expected at most {} characters, but got {}",
-//                 MAX_CK_TOKEN_SYMBOL_NUM_BYTES,
-//                 token_symbol.len()
-//             ));
-//         }
-//         if !token_symbol.is_ascii() {
-//             return Err("ERROR: token symbol contains non-ascii characters".to_string());
-//         }
-//         Ok(Self(token_symbol.to_string()))
-//     }
-// }
+    fn from_str(token_symbol: &str) -> Result<Self, Self::Err> {
+        if token_symbol.len() > MAX_ERC20_TOKEN_SYMBOL_NUM_BYTES {
+            return Err(format!(
+                "ERROR: token symbol is too long: expected at most {} characters, but got {}",
+                MAX_ERC20_TOKEN_SYMBOL_NUM_BYTES,
+                token_symbol.len()
+            ));
+        }
+        if !token_symbol.is_ascii() {
+            return Err("ERROR: token symbol contains non-ascii characters".to_string());
+        }
+        Ok(Self(token_symbol.to_string()))
+    }
+}
 
 // impl TryFrom<AddCkErc20Token> for CkErc20Token {
 //     type Error = String;

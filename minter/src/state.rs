@@ -76,7 +76,8 @@ impl MintedEvent {
 pub struct State {
     pub evm_network_id: EvmNetwork,
     pub ecdsa_key_name: String,
-    pub native_twin_ledger_id: Principal,
+    pub native_ledger_id: Principal,
+    pub native_symbol: ERC20TokenSymbol,
     pub helper_contract_address: Option<Address>,
 
     // Principal id of EVM_RPC_CANISTER

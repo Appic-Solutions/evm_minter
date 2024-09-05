@@ -1,3 +1,4 @@
+mod tests;
 use crate::state::{mutate_state, State, TaskType};
 
 use candid::Principal;
@@ -22,61 +23,61 @@ pub trait RequestsGuardedByPrincipal {
 #[derive(Debug, PartialEq, Eq)]
 pub struct PendingWithdrawalRequests;
 
-// impl RequestsGuardedByPrincipal for PendingWithdrawalRequests {
-//     fn guarded_principals(state: &mut State) -> &mut BTreeSet<Principal> {
-//         &mut state.pending_withdrawal_principals
-//     }
+impl RequestsGuardedByPrincipal for PendingWithdrawalRequests {
+    fn guarded_principals(state: &mut State) -> &mut BTreeSet<Principal> {
+        &mut state.pending_withdrawal_principals
+    }
 
-//     fn pending_requests_count(state: &State) -> usize {
-//         state.eth_transactions.withdrawal_requests_len()
-//     }
-// }
+    fn pending_requests_count(state: &State) -> usize {
+        state.withdrawal_transactions.withdrawal_requests_len()
+    }
+}
 
-// /// Guards a block from executing twice when called by the same user and from being
-// /// executed [MAX_CONCURRENT] or more times in parallel.
-// #[must_use]
-// #[derive(Debug, PartialEq, Eq)]
-// pub struct Guard<PR: RequestsGuardedByPrincipal> {
-//     principal: Principal,
-//     _marker: PhantomData<PR>,
-// }
+/// Guards a block from executing twice when called by the same user and from being
+/// executed [MAX_CONCURRENT] or more times in parallel.
+#[must_use]
+#[derive(Debug, PartialEq, Eq)]
+pub struct Guard<PR: RequestsGuardedByPrincipal> {
+    principal: Principal,
+    _marker: PhantomData<PR>,
+}
 
-// impl<PR: RequestsGuardedByPrincipal> Guard<PR> {
-//     /// Attempts to create a new guard for the current code block. Fails if there is
-//     /// already a pending request for the specified [principal] or if there
-//     /// are at least [MAX_CONCURRENT] pending requests.
-//     fn new(principal: Principal) -> Result<Self, GuardError> {
-//         mutate_state(|s| {
-//             if PR::pending_requests_count(s) >= MAX_PENDING {
-//                 return Err(GuardError::TooManyPendingRequests);
-//             }
-//             let principals = PR::guarded_principals(s);
-//             if principals.contains(&principal) {
-//                 return Err(GuardError::AlreadyProcessing);
-//             }
-//             if principals.len() >= MAX_CONCURRENT {
-//                 return Err(GuardError::TooManyConcurrentRequests);
-//             }
-//             principals.insert(principal);
-//             Ok(Self {
-//                 principal,
-//                 _marker: PhantomData,
-//             })
-//         })
-//     }
-// }
+impl<PR: RequestsGuardedByPrincipal> Guard<PR> {
+    /// Attempts to create a new guard for the current code block. Fails if there is
+    /// already a pending request for the specified [principal] or if there
+    /// are at least [MAX_CONCURRENT] pending requests.
+    fn new(principal: Principal) -> Result<Self, GuardError> {
+        mutate_state(|s| {
+            if PR::pending_requests_count(s) >= MAX_PENDING {
+                return Err(GuardError::TooManyPendingRequests);
+            }
+            let principals = PR::guarded_principals(s);
+            if principals.contains(&principal) {
+                return Err(GuardError::AlreadyProcessing);
+            }
+            if principals.len() >= MAX_CONCURRENT {
+                return Err(GuardError::TooManyConcurrentRequests);
+            }
+            principals.insert(principal);
+            Ok(Self {
+                principal,
+                _marker: PhantomData,
+            })
+        })
+    }
+}
 
-// impl<PR: RequestsGuardedByPrincipal> Drop for Guard<PR> {
-//     fn drop(&mut self) {
-//         mutate_state(|s| PR::guarded_principals(s).remove(&self.principal));
-//     }
-// }
+impl<PR: RequestsGuardedByPrincipal> Drop for Guard<PR> {
+    fn drop(&mut self) {
+        mutate_state(|s| PR::guarded_principals(s).remove(&self.principal));
+    }
+}
 
-// pub fn retrieve_withdraw_guard(
-//     principal: Principal,
-// ) -> Result<Guard<PendingWithdrawalRequests>, GuardError> {
-//     Guard::new(principal)
-// }
+pub fn retrieve_withdraw_guard(
+    principal: Principal,
+) -> Result<Guard<PendingWithdrawalRequests>, GuardError> {
+    Guard::new(principal)
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TimerGuard {

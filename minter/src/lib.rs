@@ -1,3 +1,4 @@
+mod address;
 mod cbor;
 pub mod checked_amount;
 mod deposit;
@@ -6,10 +7,12 @@ mod endpoints;
 mod erc20;
 mod eth_types;
 mod guard;
+mod ledger_client;
 mod lifecycles;
 mod logs;
 mod management;
 mod map;
+mod memo;
 mod numeric;
 mod rpc_client;
 mod rpc_declrations;
