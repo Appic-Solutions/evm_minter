@@ -82,14 +82,14 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
                 .withdrawal_transactions
                 .record_signed_transaction(transaction.clone());
         }
-        // EventType::ReplacedTransaction {
-        //     withdrawal_id: _,
-        //     transaction,
-        // } => {
-        //     state
-        //         .withdrawal_transactions
-        //         .record_resubmit_transaction(transaction.clone());
-        // }
+        EventType::ReplacedTransaction {
+            withdrawal_id: _,
+            transaction,
+        } => {
+            state
+                .withdrawal_transactions
+                .record_resubmit_transaction(transaction.clone());
+        }
         EventType::FinalizedTransaction {
             withdrawal_id,
             transaction_receipt,

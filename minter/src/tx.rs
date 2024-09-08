@@ -9,7 +9,7 @@ use crate::rpc_client::{MultiCallError, RpcClient};
 use crate::rpc_declrations::{
     BlockSpec, BlockTag, FeeHistory, FeeHistoryParams, Hash, Quantity, TransactionStatus,
 };
-use crate::state::TaskType;
+use crate::state::{lazy_call_ecdsa_public_key, TaskType};
 use crate::state::{mutate_state, read_state};
 use crate::{
     eth_types::Address,
