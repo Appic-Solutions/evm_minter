@@ -1,19 +1,20 @@
 use ic_crypto_secp256k1::PublicKey;
-use ic_ethereum_types::Address;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+use crate::eth_types::Address;
+
 #[cfg(test)]
 mod tests;
 
-pub fn ecdsa_public_key_to_address(pubkey: &PublicKey) -> ic_ethereum_types::Address {
+pub fn ecdsa_public_key_to_address(pubkey: &PublicKey) -> Address {
     let key_bytes = pubkey.serialize_sec1(/*compressed=*/ false);
     debug_assert_eq!(key_bytes[0], 0x04);
     let hash = keccak(&key_bytes[1..]);
     let mut addr = [0u8; 20];
     addr[..].copy_from_slice(&hash[12..32]);
-    ic_ethereum_types::Address::new(addr)
+    Address::new(addr)
 }
 
 fn keccak(bytes: &[u8]) -> [u8; 32] {
@@ -50,8 +51,6 @@ pub fn validate_address_as_destination(address: &str) -> Result<Address, Address
     if address == Address::ZERO {
         return Err(AddressValidationError::NotSupported(address));
     }
-    if crate::blocklist::is_blocked(&address) {
-        return Err(AddressValidationError::Blocked(address));
-    }
+
     Ok(address)
 }

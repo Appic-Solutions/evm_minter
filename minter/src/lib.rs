@@ -19,3 +19,4 @@ mod rpc_declrations;
 mod state;
 mod storage;
 mod tx;
+mod withdraw;

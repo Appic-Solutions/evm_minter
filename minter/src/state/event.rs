@@ -4,7 +4,9 @@ use minicbor::{Decode, Encode};
 use crate::{
     deposit_logs::{EventSource, ReceivedDepositEvent, ReceivedErc20Event, ReceivedNativeEvent},
     eth_types::Address,
-    numeric::BlockNumber,
+    numeric::{BlockNumber, LedgerBurnIndex},
+    rpc_declrations::TransactionReceipt,
+    tx::{Eip1559TransactionRequest, SignedEip1559TransactionRequest},
 };
 
 use super::transactions::{Erc20WithdrawalRequest, NativeWithdrawlRequest};
@@ -53,43 +55,43 @@ pub enum EventType {
     #[n(7)]
     AcceptedNativeWithdrawalRequest(#[n(0)] NativeWithdrawlRequest),
     // /// The minter created a new transaction to handle a withdrawal request.
-    // #[n(8)]
-    // CreatedTransaction {
-    //     #[cbor(n(0), with = "crate::cbor::id")]
-    //     withdrawal_id: LedgerBurnIndex,
-    //     #[n(1)]
-    //     transaction: Eip1559TransactionRequest,
-    // },
-    // /// The minter signed a transaction.
-    // #[n(9)]
-    // SignedTransaction {
-    //     /// The withdrawal identifier.
-    //     #[cbor(n(0), with = "crate::cbor::id")]
-    //     withdrawal_id: LedgerBurnIndex,
-    //     /// The signed transaction.
-    //     #[n(1)]
-    //     transaction: SignedEip1559TransactionRequest,
-    // },
-    // /// The minter created a new transaction to handle an existing withdrawal request.
-    // #[n(10)]
-    // ReplacedTransaction {
-    //     /// The withdrawal identifier.
-    //     #[cbor(n(0), with = "crate::cbor::id")]
-    //     withdrawal_id: LedgerBurnIndex,
-    //     /// The replacement transaction.
-    //     #[n(1)]
-    //     transaction: Eip1559TransactionRequest,
-    // },
-    // /// The minter observed the transaction being included in a finalized Ethereum block.
-    // #[n(11)]
-    // FinalizedTransaction {
-    //     /// The withdrawal identifier.
-    //     #[cbor(n(0), with = "crate::cbor::id")]
-    //     withdrawal_id: LedgerBurnIndex,
-    //     /// The receipt for the finalized transaction.
-    //     #[n(1)]
-    //     transaction_receipt: TransactionReceipt,
-    // },
+    #[n(8)]
+    CreatedTransaction {
+        #[cbor(n(0), with = "crate::cbor::id")]
+        withdrawal_id: LedgerBurnIndex,
+        #[n(1)]
+        transaction: Eip1559TransactionRequest,
+    },
+    /// The minter signed a transaction.
+    #[n(9)]
+    SignedTransaction {
+        /// The withdrawal identifier.
+        #[cbor(n(0), with = "crate::cbor::id")]
+        withdrawal_id: LedgerBurnIndex,
+        /// The signed transaction.
+        #[n(1)]
+        transaction: SignedEip1559TransactionRequest,
+    },
+    /// The minter created a new transaction to handle an existing withdrawal request.
+    #[n(10)]
+    ReplacedTransaction {
+        /// The withdrawal identifier.
+        #[cbor(n(0), with = "crate::cbor::id")]
+        withdrawal_id: LedgerBurnIndex,
+        /// The replacement transaction.
+        #[n(1)]
+        transaction: Eip1559TransactionRequest,
+    },
+    /// The minter observed the transaction being included in a finalized Ethereum block.
+    #[n(11)]
+    FinalizedTransaction {
+        /// The withdrawal identifier.
+        #[cbor(n(0), with = "crate::cbor::id")]
+        withdrawal_id: LedgerBurnIndex,
+        /// The receipt for the finalized transaction.
+        #[n(1)]
+        transaction_receipt: TransactionReceipt,
+    },
     // /// The minter successfully reimbursed a failed withdrawal
     // /// or the transaction fee associated with a ckERC20 withdrawal.
     // #[n(12)]

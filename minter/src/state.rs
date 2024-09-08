@@ -10,13 +10,18 @@ use std::{
 
 use candid::Principal;
 use hex_literal::hex;
+use ic_canister_log::log;
+use ic_crypto_secp256k1::PublicKey;
+use serde_bytes::ByteBuf;
 use transactions::WithdrawalTransactions;
 
 use crate::{
+    address::ecdsa_public_key_to_address,
     deposit_logs::{EventSource, ReceivedDepositEvent},
     erc20::ERC20TokenSymbol,
     eth_types::Address,
     lifecycles::EvmNetwork,
+    logs::DEBUG,
     map::DedupMultiKeyMap,
     numeric::{BlockNumber, Erc20Value, LedgerMintIndex, Wei, WeiPerGas},
     rpc_declrations::{BlockTag, FixedSizeData},
@@ -30,6 +35,8 @@ thread_local! {
 
 pub(crate) const RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC: [u8; 32] =
     hex!("d04bc46dc93f065e7320e2cdc9c8ea8e1acaf085995e9f777cf770a2ee71e655");
+
+pub const MAIN_DERIVATION_PATH: Vec<ByteBuf> = vec![];
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum InvalidEventReason {
@@ -74,7 +81,7 @@ impl MintedEvent {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct State {
-    pub evm_network_id: EvmNetwork,
+    pub evm_network: EvmNetwork,
     pub ecdsa_key_name: String,
     pub native_ledger_id: Principal,
     pub native_symbol: ERC20TokenSymbol,
@@ -133,6 +140,10 @@ impl State {
     // Returns the blockcheight
     pub const fn block_height(&self) -> BlockTag {
         self.block_height
+    }
+
+    pub const fn evm_network(&self) -> EvmNetwork {
+        self.evm_network
     }
 
     pub fn max_block_spread_for_logs_scraping(&self) -> u16 {
@@ -355,9 +366,51 @@ impl Erc20Balances {
 #[derive(Debug, Hash, Copy, Clone, PartialEq, Eq)]
 pub enum TaskType {
     Mint,
-    // RetrieveEth,
+    RetrieveEth,
     ScrapLogs,
     RefreshGasFeeEstimate,
     // Reimbursement,
     // MintCkErc20,
+}
+
+pub async fn lazy_call_ecdsa_public_key() -> PublicKey {
+    use ic_cdk::api::management_canister::ecdsa::{
+        ecdsa_public_key, EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgument,
+    };
+
+    fn to_public_key(response: &EcdsaPublicKeyResponse) -> PublicKey {
+        PublicKey::deserialize_sec1(&response.public_key).unwrap_or_else(|e| {
+            ic_cdk::trap(&format!("failed to decode minter's public key: {:?}", e))
+        })
+    }
+
+    if let Some(ecdsa_pk_response) = read_state(|s| s.ecdsa_public_key.clone()) {
+        return to_public_key(&ecdsa_pk_response);
+    }
+    let key_name = read_state(|s| s.ecdsa_key_name.clone());
+    log!(DEBUG, "Fetching the ECDSA public key {key_name}");
+    let (response,) = ecdsa_public_key(EcdsaPublicKeyArgument {
+        canister_id: None,
+        derivation_path: MAIN_DERIVATION_PATH
+            .into_iter()
+            .map(|x| x.to_vec())
+            .collect(),
+        key_id: EcdsaKeyId {
+            curve: EcdsaCurve::Secp256k1,
+            name: key_name,
+        },
+    })
+    .await
+    .unwrap_or_else(|(error_code, message)| {
+        ic_cdk::trap(&format!(
+            "failed to get minter's public key: {} (error code = {:?})",
+            message, error_code,
+        ))
+    });
+    mutate_state(|s| s.ecdsa_public_key = Some(response.clone()));
+    to_public_key(&response)
+}
+
+pub async fn minter_address() -> Address {
+    ecdsa_public_key_to_address(&lazy_call_ecdsa_public_key().await)
 }

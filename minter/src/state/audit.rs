@@ -66,43 +66,43 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
                 .withdrawal_transactions
                 .record_withdrawal_request(request.clone());
         }
-        // EventType::CreatedTransaction {
-        //     withdrawal_id,
-        //     transaction,
-        // } => {
-        //     state
-        //         .eth_transactions
-        //         .record_created_transaction(*withdrawal_id, transaction.clone());
-        // }
-        // EventType::SignedTransaction {
-        //     withdrawal_id: _,
-        //     transaction,
-        // } => {
-        //     state
-        //         .eth_transactions
-        //         .record_signed_transaction(transaction.clone());
-        // }
+        EventType::CreatedTransaction {
+            withdrawal_id,
+            transaction,
+        } => {
+            state
+                .withdrawal_transactions
+                .record_created_transaction(*withdrawal_id, transaction.clone());
+        }
+        EventType::SignedTransaction {
+            withdrawal_id: _,
+            transaction,
+        } => {
+            state
+                .withdrawal_transactions
+                .record_signed_transaction(transaction.clone());
+        }
         // EventType::ReplacedTransaction {
         //     withdrawal_id: _,
         //     transaction,
         // } => {
         //     state
-        //         .eth_transactions
+        //         .withdrawal_transactions
         //         .record_resubmit_transaction(transaction.clone());
         // }
-        // EventType::FinalizedTransaction {
-        //     withdrawal_id,
-        //     transaction_receipt,
-        // } => {
-        //     state.record_finalized_transaction(withdrawal_id, transaction_receipt);
-        // }
+        EventType::FinalizedTransaction {
+            withdrawal_id,
+            transaction_receipt,
+        } => {
+            state.record_finalized_transaction(withdrawal_id, transaction_receipt);
+        }
         // EventType::ReimbursedEthWithdrawal(Reimbursed {
         //     burn_in_block: withdrawal_id,
         //     reimbursed_in_block,
         //     reimbursed_amount: _,
         //     transaction_hash: _,
         // }) => {
-        //     state.eth_transactions.record_finalized_reimbursement(
+        //     state.withdrawal_transactions.record_finalized_reimbursement(
         //         ReimbursementIndex::CkEth {
         //             ledger_burn_index: *withdrawal_id,
         //         },
@@ -121,7 +121,7 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
           //     ckerc20_ledger_id,
           //     reimbursed,
           // } => {
-          //     state.eth_transactions.record_finalized_reimbursement(
+          //     state.withdrawal_transactions.record_finalized_reimbursement(
           //         ReimbursementIndex::CkErc20 {
           //             cketh_ledger_burn_index: *cketh_ledger_burn_index,
           //             ledger_id: *ckerc20_ledger_id,
@@ -131,7 +131,7 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
           //     );
           // }
           // EventType::FailedErc20WithdrawalRequest(cketh_reimbursement_request) => {
-          //     state.eth_transactions.record_reimbursement_request(
+          //     state.withdrawal_transactions.record_reimbursement_request(
           //         ReimbursementIndex::CkEth {
           //             ledger_burn_index: cketh_reimbursement_request.ledger_burn_index,
           //         },
@@ -143,7 +143,7 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
           // }
           // EventType::QuarantinedReimbursement { index } => {
           //     state
-          //         .eth_transactions
+          //         .withdrawal_transactions
           //         .record_quarantined_reimbursement(index.clone());
           // }
     }

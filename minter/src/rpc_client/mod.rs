@@ -56,7 +56,7 @@ impl RpcClient {
     pub fn from_state(state: &State) -> Self {
         let mut client = Self {
             evm_rpc_client: None,
-            chain: state.evm_network_id,
+            chain: state.evm_network,
         };
         const MIN_ATTACHED_CYCLES: u128 = 300_000_000_000;
 
@@ -159,7 +159,7 @@ impl RpcClient {
         }
     }
 
-    pub async fn eth_get_finalized_transaction_count(
+    pub async fn get_finalized_transaction_count(
         &self,
         address: Address,
     ) -> Result<TransactionCount, MultiCallError<TransactionCount>> {
@@ -178,7 +178,7 @@ impl RpcClient {
         }
     }
 
-    pub async fn eth_get_latest_transaction_count(
+    pub async fn get_latest_transaction_count(
         &self,
         address: Address,
     ) -> Result<TransactionCount, MultiCallError<TransactionCount>> {
@@ -193,6 +193,23 @@ impl RpcClient {
                 .reduce()
                 .reduce_with_min_by_key(|transaction_count| *transaction_count)
                 .result;
+        } else {
+            Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
+                "EVM RPC canister can not be None",
+            )))
+        }
+    }
+
+    pub async fn send_raw_transaction(
+        &self,
+        raw_signed_transaction_hex: String,
+    ) -> Result<SendRawTransactionResult, MultiCallError<SendRawTransactionResult>> {
+        if let Some(evm_rpc_client) = &self.evm_rpc_client {
+            let result = evm_rpc_client
+                .eth_send_raw_transaction(raw_signed_transaction_hex)
+                .await
+                .reduce();
+            return result.result;
         } else {
             Err(MultiCallError::ConsistentEvmRpcCanisterError(String::from(
                 "EVM RPC canister can not be None",

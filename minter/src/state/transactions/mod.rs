@@ -1102,7 +1102,7 @@ pub fn create_transaction(
     nonce: TransactionNonce,
     gas_fee_estimate: GasFeeEstimate,
     gas_limit: GasAmount,
-    ethereum_network: EvmNetwork,
+    evm_network: EvmNetwork,
 ) -> Result<Eip1559TransactionRequest, CreateTransactionError> {
     assert!(
         gas_limit > GasAmount::ZERO,
@@ -1123,7 +1123,7 @@ pub fn create_transaction(
                 }
             };
             Ok(Eip1559TransactionRequest {
-                chain_id: ethereum_network.chain_id(),
+                chain_id: evm_network.chain_id(),
                 nonce,
                 max_priority_fee_per_gas: transaction_price.max_priority_fee_per_gas,
                 max_fee_per_gas: transaction_price.max_fee_per_gas,
@@ -1157,7 +1157,7 @@ pub fn create_transaction(
                 });
             }
             Ok(Eip1559TransactionRequest {
-                chain_id: ethereum_network.chain_id(),
+                chain_id: evm_network.chain_id(),
                 nonce,
                 max_priority_fee_per_gas: gas_fee_estimate.max_priority_fee_per_gas,
                 max_fee_per_gas: request_max_fee_per_gas,
