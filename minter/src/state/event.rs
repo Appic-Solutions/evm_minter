@@ -9,7 +9,9 @@ use crate::{
     tx::{Eip1559TransactionRequest, SignedEip1559TransactionRequest},
 };
 
-use super::transactions::{Erc20WithdrawalRequest, NativeWithdrawlRequest};
+use super::transactions::{
+    Erc20WithdrawalRequest, NativeWithdrawlRequest, Reimbursed, ReimbursementIndex,
+};
 
 /// The event describing the ckETH minter state transition.
 #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq)]
@@ -92,10 +94,10 @@ pub enum EventType {
         #[n(1)]
         transaction_receipt: TransactionReceipt,
     },
-    // /// The minter successfully reimbursed a failed withdrawal
-    // /// or the transaction fee associated with a ckERC20 withdrawal.
-    // #[n(12)]
-    // ReimbursedEthWithdrawal(#[n(0)] Reimbursed),
+    /// The minter successfully reimbursed a failed withdrawal
+    /// or the transaction fee associated with a ckERC20 withdrawal.
+    #[n(12)]
+    ReimbursedNativeWithdrawal(#[n(0)] Reimbursed),
     // /// Add a new ckERC20 token.
     // #[n(14)]
     // AddedCkErc20Token(#[n(0)] CkErc20Token),
@@ -125,15 +127,15 @@ pub enum EventType {
     //     #[n(0)]
     //     block_number: BlockNumber,
     // },
-    // #[n(19)]
-    // ReimbursedErc20Withdrawal {
-    //     #[cbor(n(0), with = "crate::cbor::id")]
-    //     cketh_ledger_burn_index: LedgerBurnIndex,
-    //     #[cbor(n(1), with = "crate::cbor::principal")]
-    //     ckerc20_ledger_id: Principal,
-    //     #[n(2)]
-    //     reimbursed: Reimbursed,
-    // },
+    #[n(19)]
+    ReimbursedErc20Withdrawal {
+        #[cbor(n(0), with = "crate::cbor::id")]
+        native_ledger_burn_index: LedgerBurnIndex,
+        #[cbor(n(1), with = "crate::cbor::principal")]
+        erc20_ledger_id: Principal,
+        #[n(2)]
+        reimbursed: Reimbursed,
+    },
     // /// The minter could not burn the given amount of ckERC20 tokens.
     // #[n(20)]
     // FailedErc20WithdrawalRequest(#[n(0)] ReimbursementRequest),
@@ -146,15 +148,15 @@ pub enum EventType {
     //     #[n(0)]
     //     event_source: EventSource,
     // },
-    // /// The minter unexpectedly panic while processing a reimbursement.
-    // /// The reimbursement is quarantined to prevent any double minting and
-    // /// will not be processed without further manual intervention.
-    // #[n(22)]
-    // QuarantinedReimbursement {
-    //     /// The unique identifier of the reimbursement.
-    //     #[n(0)]
-    //     index: ReimbursementIndex,
-    // },
+    /// The minter unexpectedly panic while processing a reimbursement.
+    /// The reimbursement is quarantined to prevent any double minting and
+    /// will not be processed without further manual intervention.
+    #[n(22)]
+    QuarantinedReimbursement {
+        /// The unique identifier of the reimbursement.
+        #[n(0)]
+        index: ReimbursementIndex,
+    },
     // /// Skipped block for a specific helper contract.
     #[n(23)]
     SkippedBlock {

@@ -2,7 +2,10 @@
 // mod tests;
 
 pub use super::event::{Event, EventType};
-use super::State;
+use super::{
+    transactions::{Reimbursed, ReimbursementIndex},
+    State,
+};
 // use crate::erc20::CkTokenSymbol;
 // use crate::state::transactions::{Reimbursed, ReimbursementIndex};
 use crate::storage::{record_event, with_event_iter};
@@ -96,19 +99,21 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
         } => {
             state.record_finalized_transaction(withdrawal_id, transaction_receipt);
         }
-        // EventType::ReimbursedEthWithdrawal(Reimbursed {
-        //     burn_in_block: withdrawal_id,
-        //     reimbursed_in_block,
-        //     reimbursed_amount: _,
-        //     transaction_hash: _,
-        // }) => {
-        //     state.withdrawal_transactions.record_finalized_reimbursement(
-        //         ReimbursementIndex::CkEth {
-        //             ledger_burn_index: *withdrawal_id,
-        //         },
-        //         *reimbursed_in_block,
-        //     );
-        // }
+        EventType::ReimbursedNativeWithdrawal(Reimbursed {
+            burn_in_block: withdrawal_id,
+            reimbursed_in_block,
+            reimbursed_amount: _,
+            transaction_hash: _,
+        }) => {
+            state
+                .withdrawal_transactions
+                .record_finalized_reimbursement(
+                    ReimbursementIndex::CkEth {
+                        ledger_burn_index: *withdrawal_id,
+                    },
+                    *reimbursed_in_block,
+                );
+        }
         EventType::SkippedBlock { block_number } => {
             state.record_skipped_block(*block_number);
         } // EventType::AddedCkErc20Token(ckerc20_token) => {
@@ -116,36 +121,38 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
         // }
         EventType::AcceptedErc20WithdrawalRequest(request) => {
             state.record_erc20_withdrawal_request(request.clone())
-        } // EventType::ReimbursedErc20Withdrawal {
-          //     cketh_ledger_burn_index,
-          //     ckerc20_ledger_id,
-          //     reimbursed,
-          // } => {
-          //     state.withdrawal_transactions.record_finalized_reimbursement(
-          //         ReimbursementIndex::CkErc20 {
-          //             cketh_ledger_burn_index: *cketh_ledger_burn_index,
-          //             ledger_id: *ckerc20_ledger_id,
-          //             ckerc20_ledger_burn_index: reimbursed.burn_in_block,
-          //         },
-          //         reimbursed.reimbursed_in_block,
-          //     );
-          // }
-          // EventType::FailedErc20WithdrawalRequest(cketh_reimbursement_request) => {
-          //     state.withdrawal_transactions.record_reimbursement_request(
-          //         ReimbursementIndex::CkEth {
-          //             ledger_burn_index: cketh_reimbursement_request.ledger_burn_index,
-          //         },
-          //         cketh_reimbursement_request.clone(),
-          //     )
-          // }
-          // EventType::QuarantinedDeposit { event_source } => {
-          //     state.record_quarantined_deposit(*event_source);
-          // }
-          // EventType::QuarantinedReimbursement { index } => {
-          //     state
-          //         .withdrawal_transactions
-          //         .record_quarantined_reimbursement(index.clone());
-          // }
+        }
+        EventType::ReimbursedErc20Withdrawal {
+            native_ledger_burn_index,
+            erc20_ledger_id,
+            reimbursed,
+        } => {
+            state
+                .withdrawal_transactions
+                .record_finalized_reimbursement(
+                    ReimbursementIndex::Erc20 {
+                        native_ledger_burn_index: *native_ledger_burn_index,
+                        ledger_id: *erc20_ledger_id,
+                        erc20_ledger_burn_index: reimbursed.burn_in_block,
+                    },
+                    reimbursed.reimbursed_in_block,
+                );
+        } // EventType::FailedErc20WithdrawalRequest(cketh_reimbursement_request) => {
+        //     state.withdrawal_transactions.record_reimbursement_request(
+        //         ReimbursementIndex::CkEth {
+        //             ledger_burn_index: cketh_reimbursement_request.ledger_burn_index,
+        //         },
+        //         cketh_reimbursement_request.clone(),
+        //     )
+        // }
+        // EventType::QuarantinedDeposit { event_source } => {
+        //     state.record_quarantined_deposit(*event_source);
+        // }
+        EventType::QuarantinedReimbursement { index } => {
+            state
+                .withdrawal_transactions
+                .record_quarantined_reimbursement(index.clone());
+        }
     }
 }
 

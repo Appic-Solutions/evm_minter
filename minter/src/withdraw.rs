@@ -1,15 +1,24 @@
 use crate::guard::TimerGuard;
 use crate::logs::{DEBUG, INFO};
-use crate::numeric::{GasAmount, LedgerBurnIndex};
+use crate::numeric::{GasAmount, LedgerBurnIndex, LedgerMintIndex};
 use crate::rpc_client::{MultiCallError, RpcClient};
 use crate::rpc_declrations::{SendRawTransactionResult, TransactionReceipt};
 use crate::state::audit::{process_event, EventType};
-use crate::state::transactions::{create_transaction, CreateTransactionError, WithdrawalRequest};
+use crate::state::transactions::{
+    create_transaction, CreateTransactionError, Reimbursed, ReimbursementIndex,
+    ReimbursementRequest, WithdrawalRequest,
+};
 use crate::state::{mutate_state, State, TaskType};
 use crate::tx::{lazy_refresh_gas_fee_estimate, GasFeeEstimate};
 use crate::{numeric::TransactionCount, state::read_state};
+use candid::Nat;
 use futures::future::join_all;
 use ic_canister_log::log;
+use icrc_ledger_client_cdk::{CdkRuntime, ICRC1Client};
+use icrc_ledger_types::icrc1::account::Account;
+use icrc_ledger_types::icrc1::transfer::TransferArg;
+use num_traits::ToPrimitive;
+use scopeguard::ScopeGuard;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::zip;
 
@@ -21,6 +30,113 @@ const TRANSACTIONS_TO_SEND_BATCH_SIZE: usize = 5;
 // more complicated logic that requires maximum of 100000 Gas.
 pub const NATIVE_WITHDRAWAL_TRANSACTION_GAS_LIMIT: GasAmount = GasAmount::new(21_000);
 pub const ERC20_WITHDRAWAL_TRANSACTION_GAS_LIMIT: GasAmount = GasAmount::new(100_000);
+
+pub async fn process_reimbursement() {
+    let _guard = match TimerGuard::new(TaskType::Reimbursement) {
+        Ok(guard) => guard,
+        Err(e) => {
+            log!(DEBUG, "Failed retrieving reimbursement guard: {e:?}",);
+            return;
+        }
+    };
+
+    let reimbursements: Vec<(ReimbursementIndex, ReimbursementRequest)> = read_state(|s| {
+        s.withdrawal_transactions
+            .reimbursement_requests_iter()
+            .map(|(index, request)| (index.clone(), request.clone()))
+            .collect()
+    });
+    if reimbursements.is_empty() {
+        return;
+    }
+
+    let mut error_count = 0;
+
+    for (index, reimbursement_request) in reimbursements {
+        // Ensure that even if we were to panic in the callback, after having contacted the ledger to mint the tokens,
+        // this reimbursement request will not be processed again.
+        let prevent_double_minting_guard = scopeguard::guard(index.clone(), |index| {
+            mutate_state(|s| process_event(s, EventType::QuarantinedReimbursement { index }));
+        });
+        let ledger_canister_id = match index {
+            ReimbursementIndex::Native { .. } => read_state(|s| s.native_ledger_id),
+            ReimbursementIndex::Erc20 { ledger_id, .. } => ledger_id,
+        };
+        let client = ICRC1Client {
+            runtime: CdkRuntime,
+            ledger_canister_id,
+        };
+        let args = TransferArg {
+            from_subaccount: None,
+            to: Account {
+                owner: reimbursement_request.to,
+                subaccount: reimbursement_request
+                    .to_subaccount
+                    .as_ref()
+                    .map(|subaccount| subaccount.0),
+            },
+            fee: None,
+            created_at_time: None,
+            memo: Some(reimbursement_request.clone().into()),
+            amount: Nat::from(reimbursement_request.reimbursed_amount),
+        };
+        let block_index = match client.transfer(args).await {
+            Ok(Ok(block_index)) => block_index
+                .0
+                .to_u64()
+                .expect("block index should fit into u64"),
+            Ok(Err(err)) => {
+                log!(
+                    INFO,
+                    "[process_reimbursement] Failed to mint native token {err}"
+                );
+                error_count += 1;
+                // minting failed, defuse guard
+                ScopeGuard::into_inner(prevent_double_minting_guard);
+                continue;
+            }
+            Err(err) => {
+                log!(
+                    INFO,
+                    "[process_reimbursement] Failed to send a message to the ledger ({ledger_canister_id}): {err:?}"
+                );
+                error_count += 1;
+                // minting failed, defuse guard
+                ScopeGuard::into_inner(prevent_double_minting_guard);
+                continue;
+            }
+        };
+        let reimbursed = Reimbursed {
+            burn_in_block: reimbursement_request.ledger_burn_index,
+            reimbursed_in_block: LedgerMintIndex::new(block_index),
+            reimbursed_amount: reimbursement_request.reimbursed_amount,
+            transaction_hash: reimbursement_request.transaction_hash,
+        };
+        let event = match index {
+            ReimbursementIndex::Native {
+                ledger_burn_index: _,
+            } => EventType::ReimbursedNativeWithdrawal(reimbursed),
+            ReimbursementIndex::Erc20 {
+                native_ledger_burn_index,
+                ledger_id,
+                erc20_ledger_burn_index: _,
+            } => EventType::ReimbursedErc20Withdrawal {
+                native_ledger_burn_index,
+                erc20_ledger_id: ledger_id,
+                reimbursed,
+            },
+        };
+        mutate_state(|s| process_event(s, event));
+        // minting succeeded, defuse guard
+        ScopeGuard::into_inner(prevent_double_minting_guard);
+    }
+    if error_count > 0 {
+        log!(
+            INFO,
+            "[process_reimbursement] Failed to reimburse {error_count} users, retrying later."
+        );
+    }
+}
 
 pub async fn process_retrieve_tokens_requests() {
     let _guard = match TimerGuard::new(TaskType::RetrieveEth) {

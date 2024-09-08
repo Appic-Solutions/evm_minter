@@ -369,7 +369,7 @@ pub enum TaskType {
     RetrieveEth,
     ScrapLogs,
     RefreshGasFeeEstimate,
-    // Reimbursement,
+    Reimbursement,
     // MintCkErc20,
 }
 

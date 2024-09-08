@@ -1046,6 +1046,7 @@ dependencies = [
  "phantom_newtype",
  "proptest",
  "rlp",
+ "scopeguard",
  "serde",
  "serde_bytes",
  "serde_json",
