@@ -92,7 +92,8 @@ pub struct State {
     // Principal id of EVM_RPC_CANISTER
     pub evm_canister_id: Principal,
     pub ecdsa_public_key: Option<EcdsaPublicKeyResponse>,
-    // pub cketh_minimum_withdrawal_amount: Wei,
+
+    pub native_minimum_withdrawal_amount: Wei,
     pub block_height: BlockTag,
     pub first_scraped_block_number: BlockNumber,
     pub last_scraped_block_number: BlockNumber,
@@ -117,13 +118,13 @@ pub struct State {
 
     /// Locks preventing concurrent execution timer tasks
     pub active_tasks: HashSet<TaskType>,
-    /// Number of HTTP outcalls since the last upgrade.
-    /// Used to correlate request and response in logs.
+    // Number of HTTP outcalls since the last upgrade.
+    // Used to correlate request and response in logs.
     // pub http_request_counter: u64,
     pub last_transaction_price_estimate: Option<(u64, GasFeeEstimate)>,
 
-    // /// Canister ID of the ledger suite orchestrator that
-    // /// can add new ERC-20 token to the minter
+    // Canister ID of the ledger suite orchestrator that
+    // can add new ERC-20 token to the minter
     // pub ledger_suite_orchestrator_id: Option<Principal>,
 
     // /// Canister ID of the EVM RPC canister that
