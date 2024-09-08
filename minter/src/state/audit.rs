@@ -8,7 +8,10 @@ use super::{
 };
 // use crate::erc20::CkTokenSymbol;
 // use crate::state::transactions::{Reimbursed, ReimbursementIndex};
-use crate::storage::{record_event, with_event_iter};
+use crate::{
+    erc20::ERC20TokenSymbol,
+    storage::{record_event, with_event_iter},
+};
 
 /// Updates the state to reflect the given state transition.
 // public because it's used in tests since process_event
@@ -34,30 +37,31 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
             reason,
         } => {
             let _ = state.record_invalid_deposit(*event_source, reason.clone());
-        } // EventType::MintedCkEth {
-        //     event_source,
-        //     mint_block_index,
-        // } => {
-        //     state.record_successful_mint(
-        //         *event_source,
-        //         &CkTokenSymbol::cketh_symbol_from_state(state).to_string(),
-        //         *mint_block_index,
-        //         None,
-        //     );
-        // }
-        // EventType::MintedCkErc20 {
-        //     event_source,
-        //     mint_block_index,
-        //     ckerc20_token_symbol,
-        //     erc20_contract_address,
-        // } => {
-        //     state.record_successful_mint(
-        //         *event_source,
-        //         ckerc20_token_symbol,
-        //         *mint_block_index,
-        //         Some(*erc20_contract_address),
-        //     );
-        // }
+        }
+        EventType::MintedNative {
+            event_source,
+            mint_block_index,
+        } => {
+            state.record_successful_mint(
+                *event_source,
+                &state.native_symbol.to_string(),
+                *mint_block_index,
+                None,
+            );
+        }
+        EventType::MintedErc20 {
+            event_source,
+            mint_block_index,
+            erc20_token_symbol,
+            erc20_contract_address,
+        } => {
+            state.record_successful_mint(
+                *event_source,
+                erc20_token_symbol,
+                *mint_block_index,
+                Some(*erc20_contract_address),
+            );
+        }
         // EventType::SyncedToBlock { block_number } => {
         //     state.last_scraped_block_number = *block_number;
         // }
@@ -108,7 +112,7 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
             state
                 .withdrawal_transactions
                 .record_finalized_reimbursement(
-                    ReimbursementIndex::CkEth {
+                    ReimbursementIndex::Native {
                         ledger_burn_index: *withdrawal_id,
                     },
                     *reimbursed_in_block,
@@ -145,9 +149,9 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
         //         cketh_reimbursement_request.clone(),
         //     )
         // }
-        // EventType::QuarantinedDeposit { event_source } => {
-        //     state.record_quarantined_deposit(*event_source);
-        // }
+        EventType::QuarantinedDeposit { event_source } => {
+            state.record_quarantined_deposit(*event_source);
+        }
         EventType::QuarantinedReimbursement { index } => {
             state
                 .withdrawal_transactions

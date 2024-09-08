@@ -4,7 +4,7 @@ use minicbor::{Decode, Encode};
 use crate::{
     deposit_logs::{EventSource, ReceivedDepositEvent, ReceivedErc20Event, ReceivedNativeEvent},
     eth_types::Address,
-    numeric::{BlockNumber, LedgerBurnIndex},
+    numeric::{BlockNumber, LedgerBurnIndex, LedgerMintIndex},
     rpc_declrations::TransactionReceipt,
     tx::{Eip1559TransactionRequest, SignedEip1559TransactionRequest},
 };
@@ -36,16 +36,16 @@ pub enum EventType {
         #[n(1)]
         reason: String,
     },
-    /// The minter minted ckETH in response to a deposit.
-    // #[n(5)]
-    // MintedCkEth {
-    //     /// The unique identifier of the deposit on the Ethereum network.
-    //     #[n(0)]
-    //     event_source: EventSource,
-    //     /// The transaction index on the ckETH ledger.
-    //     #[cbor(n(1), with = "crate::cbor::id")]
-    //     mint_block_index: LedgerMintIndex,
-    // },
+    //  The minter minted NAtive in response to a deposit.
+    #[n(5)]
+    MintedNative {
+        /// The unique identifier of the deposit on the Ethereum network.
+        #[n(0)]
+        event_source: EventSource,
+        /// The transaction index on the Native ledger.
+        #[cbor(n(1), with = "crate::cbor::id")]
+        mint_block_index: LedgerMintIndex,
+    },
     // /// The minter processed the helper smart contract logs up to the specified height.
     // #[n(6)]
     // SyncedToBlock {
@@ -107,19 +107,19 @@ pub enum EventType {
     // /// The minter accepted a new ERC-20 withdrawal request.
     #[n(16)]
     AcceptedErc20WithdrawalRequest(#[n(0)] Erc20WithdrawalRequest),
-    // #[n(17)]
-    // MintedCkErc20 {
-    //     /// The unique identifier of the deposit on the Ethereum network.
-    //     #[n(0)]
-    //     event_source: EventSource,
-    //     /// The transaction index on the ckETH ledger.
-    //     #[cbor(n(1), with = "crate::cbor::id")]
-    //     mint_block_index: LedgerMintIndex,
-    //     #[n(2)]
-    //     ckerc20_token_symbol: String,
-    //     #[n(3)]
-    //     erc20_contract_address: Address,
-    // },
+    #[n(17)]
+    MintedErc20 {
+        /// The unique identifier of the deposit on the Ethereum network.
+        #[n(0)]
+        event_source: EventSource,
+        /// The transaction index on the ckETH ledger.
+        #[cbor(n(1), with = "crate::cbor::id")]
+        mint_block_index: LedgerMintIndex,
+        #[n(2)]
+        erc20_token_symbol: String,
+        #[n(3)]
+        erc20_contract_address: Address,
+    },
     // /// The minter processed the helper smart contract logs up to the specified height.
     // #[n(18)]
     // SyncedErc20ToBlock {
@@ -139,15 +139,15 @@ pub enum EventType {
     // /// The minter could not burn the given amount of ckERC20 tokens.
     // #[n(20)]
     // FailedErc20WithdrawalRequest(#[n(0)] ReimbursementRequest),
-    // /// The minter unexpectedly panic while processing a deposit.
+    /// The minter unexpectedly panic while processing a deposit.
     // /// The deposit is quarantined to prevent any double minting and
     // /// will not be processed without further manual intervention.
-    // #[n(21)]
-    // QuarantinedDeposit {
-    //     /// The unique identifier of the deposit on the Ethereum network.
-    //     #[n(0)]
-    //     event_source: EventSource,
-    // },
+    #[n(21)]
+    QuarantinedDeposit {
+        /// The unique identifier of the deposit on the Ethereum network.
+        #[n(0)]
+        event_source: EventSource,
+    },
     /// The minter unexpectedly panic while processing a reimbursement.
     /// The reimbursement is quarantined to prevent any double minting and
     /// will not be processed without further manual intervention.

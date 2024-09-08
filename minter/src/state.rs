@@ -13,7 +13,9 @@ use hex_literal::hex;
 use ic_canister_log::log;
 use ic_crypto_secp256k1::PublicKey;
 use serde_bytes::ByteBuf;
-use transactions::WithdrawalTransactions;
+use transactions::{
+    Erc20WithdrawalRequest, TransactionCallData, WithdrawalRequest, WithdrawalTransactions,
+};
 
 use crate::{
     address::ecdsa_public_key_to_address,
@@ -23,8 +25,8 @@ use crate::{
     lifecycles::EvmNetwork,
     logs::DEBUG,
     map::DedupMultiKeyMap,
-    numeric::{BlockNumber, Erc20Value, LedgerMintIndex, Wei, WeiPerGas},
-    rpc_declrations::{BlockTag, FixedSizeData},
+    numeric::{BlockNumber, Erc20Value, LedgerBurnIndex, LedgerMintIndex, Wei, WeiPerGas},
+    rpc_declrations::{BlockTag, FixedSizeData, TransactionReceipt, TransactionStatus},
     tx::GasFeeEstimate,
 };
 use ic_cdk::api::management_canister::ecdsa::EcdsaPublicKeyResponse;
@@ -152,6 +154,28 @@ impl State {
         500_u16
     }
 
+    pub fn events_to_mint(&self) -> Vec<ReceivedDepositEvent> {
+        self.events_to_mint.values().cloned().collect()
+    }
+
+    pub fn has_events_to_mint(&self) -> bool {
+        !self.events_to_mint.is_empty()
+    }
+
+    /// Quarantine the deposit event to prevent double minting.
+    /// WARNING!: It's crucial that this method does not panic,
+    /// since it's called inside the clean-up callback, when an unexpected panic did occur before.
+    fn record_quarantined_deposit(&mut self, source: EventSource) -> bool {
+        self.events_to_mint.remove(&source);
+        match self.invalid_events.entry(source) {
+            btree_map::Entry::Occupied(_) => false,
+            btree_map::Entry::Vacant(entry) => {
+                entry.insert(InvalidEventReason::QuarantinedDeposit);
+                true
+            }
+        }
+    }
+
     fn record_event_to_mint(&mut self, event: &ReceivedDepositEvent) {
         let event_source = event.source();
         assert!(
@@ -173,8 +197,12 @@ impl State {
         self.update_balance_upon_deposit(event)
     }
 
-    pub fn has_events_to_mint(&self) -> bool {
-        !self.events_to_mint.is_empty()
+    pub fn record_skipped_block(&mut self, block_number: BlockNumber) {
+        assert!(
+            self.skipped_blocks.insert(block_number),
+            "BUG: block {} was already skipped ",
+            block_number,
+        );
     }
 
     fn record_invalid_deposit(&mut self, source: EventSource, error: String) -> bool {
@@ -196,12 +224,55 @@ impl State {
         }
     }
 
-    pub fn record_skipped_block(&mut self, block_number: BlockNumber) {
+    fn record_successful_mint(
+        &mut self,
+        source: EventSource,
+        token_symbol: &str,
+        mint_block_index: LedgerMintIndex,
+        erc20_contract_address: Option<Address>,
+    ) {
         assert!(
-            self.skipped_blocks.insert(block_number),
-            "BUG: block {} was already skipped ",
-            block_number,
+            !self.invalid_events.contains_key(&source),
+            "attempted to mint an event previously marked as invalid {source:?}"
         );
+        let deposit_event = match self.events_to_mint.remove(&source) {
+            Some(event) => event,
+            None => panic!("attempted to mint Twin tokens for an unknown event {source:?}"),
+        };
+        assert_eq!(
+            self.minted_events.insert(
+                source,
+                MintedEvent {
+                    deposit_event,
+                    mint_block_index,
+                    token_symbol: token_symbol.to_string(),
+                    erc20_contract_address,
+                },
+            ),
+            None,
+            "attempted to mint ckETH twice for the same event {source:?}"
+        );
+    }
+
+    pub fn record_erc20_withdrawal_request(&mut self, request: Erc20WithdrawalRequest) {
+        assert!(
+            self.erc20_tokens
+                .contains_alt(&request.erc20_contract_address),
+            "BUG: unsupported ERC-20 token {}",
+            request.erc20_contract_address
+        );
+        self.withdrawal_transactions
+            .record_withdrawal_request(request);
+    }
+
+    pub fn record_finalized_transaction(
+        &mut self,
+        withdrawal_id: &LedgerBurnIndex,
+        receipt: &TransactionReceipt,
+    ) {
+        self.withdrawal_transactions
+            .record_finalized_transaction(*withdrawal_id, receipt.clone());
+        self.update_balance_upon_withdrawal(withdrawal_id, receipt);
     }
 
     fn update_balance_upon_deposit(&mut self, event: &ReceivedDepositEvent) {
@@ -212,7 +283,54 @@ impl State {
                 .erc20_add(event.erc20_contract_address, event.value),
         };
     }
+
+    fn update_balance_upon_withdrawal(
+        &mut self,
+        withdrawal_id: &LedgerBurnIndex,
+        receipt: &TransactionReceipt,
+    ) {
+        let tx_fee = receipt.effective_transaction_fee();
+        let tx = self
+            .withdrawal_transactions
+            .get_finalized_transaction(withdrawal_id)
+            .expect("BUG: missing finalized transaction");
+        let withdrawal_request = self
+            .withdrawal_transactions
+            .get_processed_withdrawal_request(withdrawal_id)
+            .expect("BUG: missing withdrawal request");
+        let charged_tx_fee = match withdrawal_request {
+            WithdrawalRequest::Native(req) => req
+                .withdrawal_amount
+                .checked_sub(tx.transaction().amount)
+                .expect("BUG: withdrawal amount MUST always be at least the transaction amount"),
+            WithdrawalRequest::Erc20(req) => req.max_transaction_fee,
+        };
+        let unspent_tx_fee = charged_tx_fee.checked_sub(tx_fee).expect(
+            "BUG: charged transaction fee MUST always be at least the effective transaction fee",
+        );
+        let debited_amount = match receipt.status {
+            TransactionStatus::Success => tx
+                .transaction()
+                .amount
+                .checked_add(tx_fee)
+                .expect("BUG: debited amount always fits into U256"),
+            TransactionStatus::Failure => tx_fee,
+        };
+        self.native_balance.eth_balance_sub(debited_amount);
+        self.native_balance.total_effective_tx_fees_add(tx_fee);
+        self.native_balance
+            .total_unspent_tx_fees_add(unspent_tx_fee);
+
+        if receipt.status == TransactionStatus::Success && !tx.transaction_data().is_empty() {
+            let TransactionCallData::Erc20Transfer { to: _, value } = TransactionCallData::decode(
+                tx.transaction_data(),
+            )
+            .expect("BUG: failed to decode transaction data from transaction issued by minter");
+            self.erc20_balances.erc20_sub(*tx.destination(), value);
+        }
+    }
 }
+
 pub fn read_state<R>(f: impl FnOnce(&State) -> R) -> R {
     STATE.with(|s| f(s.borrow().as_ref().expect("BUG: state is not initialized")))
 }
@@ -370,7 +488,7 @@ pub enum TaskType {
     ScrapLogs,
     RefreshGasFeeEstimate,
     Reimbursement,
-    // MintCkErc20,
+    MintErc20,
 }
 
 pub async fn lazy_call_ecdsa_public_key() -> PublicKey {

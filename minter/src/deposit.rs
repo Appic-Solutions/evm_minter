@@ -1,18 +1,133 @@
 use std::cmp::{min, Ordering};
 
 use ic_canister_log::log;
+use scopeguard::ScopeGuard;
 
-use crate::deposit_logs::{report_transaction_error, ReceivedDepsitEventError};
+use crate::deposit_logs::{
+    report_transaction_error, ReceivedDepositEvent, ReceivedDepsitEventError,
+};
 use crate::eth_types::Address;
 use crate::guard::TimerGuard;
 use crate::logs::{DEBUG, INFO};
-use crate::numeric::BlockNumber;
+use crate::numeric::{BlockNumber, LedgerMintIndex};
 use crate::rpc_client::{is_response_too_large, RpcClient};
 use crate::rpc_declrations::BlockSpec;
 use crate::state::audit::{process_event, EventType};
 use crate::state::{
     mutate_state, read_state, State, TaskType, RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC,
 };
+use num_traits::ToPrimitive;
+async fn mint() {
+    use icrc_ledger_client_cdk::{CdkRuntime, ICRC1Client};
+    use icrc_ledger_types::icrc1::transfer::TransferArg;
+
+    let _guard = match TimerGuard::new(TaskType::Mint) {
+        Ok(guard) => guard,
+        Err(_) => return,
+    };
+
+    let (eth_ledger_canister_id, events) = read_state(|s| (s.native_ledger_id, s.events_to_mint()));
+    let mut error_count = 0;
+
+    for event in events {
+        // Ensure that even if we were to panic in the callback, after having contacted the ledger to mint the tokens,
+        // this event will not be processed again.
+        let prevent_double_minting_guard = scopeguard::guard(event.clone(), |event| {
+            mutate_state(|s| {
+                process_event(
+                    s,
+                    EventType::QuarantinedDeposit {
+                        event_source: event.source(),
+                    },
+                )
+            });
+        });
+        let (token_symbol, ledger_canister_id) = match &event {
+            ReceivedDepositEvent::Native(_) => ("Native".to_string(), eth_ledger_canister_id),
+            ReceivedDepositEvent::Erc20(event) => {
+                if let Some(result) = read_state(|s| {
+                    s.erc20_tokens
+                        .get_entry_alt(&event.erc20_contract_address)
+                        .map(|(principal, symbol)| (symbol.to_string(), *principal))
+                }) {
+                    result
+                } else {
+                    panic!(
+                        "Failed to mint ERC20: {event:?} Unsupported ERC20 contract address. (This should have already been filtered out by process_event)"
+                    )
+                }
+            }
+        };
+        let client = ICRC1Client {
+            runtime: CdkRuntime,
+            ledger_canister_id,
+        };
+        let block_index = match client
+            .transfer(TransferArg {
+                from_subaccount: None,
+                to: (event.principal()).into(),
+                fee: None,
+                created_at_time: None,
+                memo: Some((&event).into()),
+                amount: event.value(),
+            })
+            .await
+        {
+            Ok(Ok(block_index)) => block_index.0.to_u64().expect("nat does not fit into u64"),
+            Ok(Err(err)) => {
+                log!(INFO, "Failed to mint {token_symbol}: {event:?} {err}");
+                error_count += 1;
+                // minting failed, defuse guard
+                ScopeGuard::into_inner(prevent_double_minting_guard);
+                continue;
+            }
+            Err(err) => {
+                log!(
+                    INFO,
+                    "Failed to send a message to the ledger ({ledger_canister_id}): {err:?}"
+                );
+                error_count += 1;
+                // minting failed, defuse guard
+                ScopeGuard::into_inner(prevent_double_minting_guard);
+                continue;
+            }
+        };
+        mutate_state(|s| {
+            process_event(
+                s,
+                match &event {
+                    ReceivedDepositEvent::Native(event) => EventType::MintedNative {
+                        event_source: event.source(),
+                        mint_block_index: LedgerMintIndex::new(block_index),
+                    },
+
+                    ReceivedDepositEvent::Erc20(event) => EventType::MintedErc20 {
+                        event_source: event.source(),
+                        mint_block_index: LedgerMintIndex::new(block_index),
+                        erc20_contract_address: event.erc20_contract_address,
+                        erc20_token_symbol: token_symbol.clone(),
+                    },
+                },
+            )
+        });
+        log!(
+            INFO,
+            "Minted {} {token_symbol} to {} in block {block_index}",
+            event.value(),
+            event.principal()
+        );
+        // minting succeeded, defuse guard
+        ScopeGuard::into_inner(prevent_double_minting_guard);
+    }
+
+    if error_count > 0 {
+        log!(
+            INFO,
+            "Failed to mint {error_count} events, rescheduling the minting"
+        );
+        // ic_cdk_timers::set_timer(crate::MINT_RETRY_DELAY, || ic_cdk::spawn(mint()));
+    }
+}
 
 /// Scraps Deposit logs between `from` and `min(from + MAX_BLOCK_SPREAD, to)` since certain RPC providers
 /// require that the number of blocks queried is no greater than MAX_BLOCK_SPREAD.
