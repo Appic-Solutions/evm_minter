@@ -4,7 +4,7 @@
 // mod tests;
 
 use crate::eth_types::Address;
-use crate::lifecycles::EvmNetwork;
+use crate::evm_config::EvmNetwork;
 // use crate::endpoints::AddCkErc20Token;
 // use crate::lifecycle::EthereumNetwork;
 use crate::state::State;
@@ -31,6 +31,12 @@ pub struct ERC20Token {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Encode, Decode)]
 #[cbor(transparent)]
 pub struct ERC20TokenSymbol(#[n(0)] String);
+
+impl ERC20TokenSymbol {
+    pub fn new(symbol: String) -> Self {
+        Self(symbol)
+    }
+}
 
 impl Display for ERC20TokenSymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

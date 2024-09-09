@@ -6,6 +6,7 @@ use serde_json::Value;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 
+use crate::endpoints::CandidBlockTag;
 use crate::eth_types::Address;
 use crate::numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas};
 
@@ -146,25 +147,25 @@ pub enum BlockTag {
     Finalized,
 }
 
-// impl From<CandidBlockTag> for BlockTag {
-//     fn from(block_tag: CandidBlockTag) -> BlockTag {
-//         match block_tag {
-//             CandidBlockTag::Latest => BlockTag::Latest,
-//             CandidBlockTag::Safe => BlockTag::Safe,
-//             CandidBlockTag::Finalized => BlockTag::Finalized,
-//         }
-//     }
-// }
+impl From<CandidBlockTag> for BlockTag {
+    fn from(block_tag: CandidBlockTag) -> BlockTag {
+        match block_tag {
+            CandidBlockTag::Latest => BlockTag::Latest,
+            CandidBlockTag::Safe => BlockTag::Safe,
+            CandidBlockTag::Finalized => BlockTag::Finalized,
+        }
+    }
+}
 
-// impl From<BlockTag> for CandidBlockTag {
-//     fn from(value: BlockTag) -> Self {
-//         match value {
-//             BlockTag::Latest => CandidBlockTag::Latest,
-//             BlockTag::Safe => CandidBlockTag::Safe,
-//             BlockTag::Finalized => CandidBlockTag::Finalized,
-//         }
-//     }
-// }
+impl From<BlockTag> for CandidBlockTag {
+    fn from(value: BlockTag) -> Self {
+        match value {
+            BlockTag::Latest => CandidBlockTag::Latest,
+            BlockTag::Safe => CandidBlockTag::Safe,
+            BlockTag::Finalized => CandidBlockTag::Finalized,
+        }
+    }
+}
 
 impl Display for BlockTag {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

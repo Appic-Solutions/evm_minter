@@ -22,7 +22,7 @@ use crate::{
     deposit_logs::{EventSource, ReceivedDepositEvent},
     erc20::ERC20TokenSymbol,
     eth_types::Address,
-    lifecycles::EvmNetwork,
+    evm_config::EvmNetwork,
     logs::DEBUG,
     map::DedupMultiKeyMap,
     numeric::{BlockNumber, Erc20Value, LedgerBurnIndex, LedgerMintIndex, Wei, WeiPerGas},
@@ -66,6 +66,16 @@ impl Display for InvalidEventReason {
         }
     }
 }
+pub enum InvalidStateError {
+    InvalidTransactionNonce(String),
+    InvalidEcdsaKeyName(String),
+    InvalidLedgerId(String),
+    InvalidHelperContractAddress(String),
+    InvalidMinimumWithdrawalAmount(String),
+    InvalidMinimumLedgerTransferFee(String),
+    InvalidLastScrapedBlockNumber(String),
+    InvalidMinimumMaximumPriorityFeePerGas(String),
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MintedEvent {
@@ -93,7 +103,9 @@ pub struct State {
     pub evm_canister_id: Principal,
     pub ecdsa_public_key: Option<EcdsaPublicKeyResponse>,
 
+    pub native_ledger_transfer_fee: Wei,
     pub native_minimum_withdrawal_amount: Wei,
+
     pub block_height: BlockTag,
     pub first_scraped_block_number: BlockNumber,
     pub last_scraped_block_number: BlockNumber,
@@ -126,10 +138,6 @@ pub struct State {
     // Canister ID of the ledger suite orchestrator that
     // can add new ERC-20 token to the minter
     // pub ledger_suite_orchestrator_id: Option<Principal>,
-
-    // /// Canister ID of the EVM RPC canister that
-    // /// handles communication with Ethereum
-    // pub evm_rpc_id: Option<Principal>,
     /// ERC-20 tokens that the minter can mint:
     /// - primary key: ledger ID for the ERC20 token
     /// - secondary key: ERC-20 contract address on Ethereum
@@ -140,6 +148,42 @@ pub struct State {
 }
 
 impl State {
+    pub fn validate_config(&self) -> Result<(), InvalidStateError> {
+        if self.ecdsa_key_name.trim().is_empty() {
+            return Err(InvalidStateError::InvalidEcdsaKeyName(
+                "ecdsa_key_name cannot be blank".to_string(),
+            ));
+        }
+        if self.native_ledger_id == Principal::anonymous() {
+            return Err(InvalidStateError::InvalidLedgerId(
+                "ledger_id cannot be the anonymous principal".to_string(),
+            ));
+        }
+        if self
+            .helper_contract_address
+            .iter()
+            .any(|address| address == &Address::ZERO)
+        {
+            return Err(InvalidStateError::InvalidHelperContractAddress(
+                "helper_contract_address cannot be the zero address".to_string(),
+            ));
+        }
+        if self.native_minimum_withdrawal_amount == Wei::ZERO {
+            return Err(InvalidStateError::InvalidMinimumWithdrawalAmount(
+                "minimum_withdrawal_amount must be positive".to_string(),
+            ));
+        }
+
+        if self.native_minimum_withdrawal_amount < self.native_ledger_transfer_fee {
+            return Err(InvalidStateError::InvalidMinimumWithdrawalAmount(
+                "minimum_withdrawal_amount must cover ledger transaction fee, \
+                otherwise ledger can return a BadBurn error that should be returned to the user"
+                    .to_string(),
+            ));
+        }
+        Ok(())
+    }
+
     // Returns the blockcheight
     pub const fn block_height(&self) -> BlockTag {
         self.block_height

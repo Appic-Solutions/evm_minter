@@ -1,4 +1,4 @@
-use crate::lifecycles::EvmNetwork;
+use crate::evm_config::EvmNetwork;
 use crate::map::MultiKeyMap;
 use crate::numeric::{GasAmount, LedgerMintIndex, TransactionCount, TransactionNonce};
 use crate::rpc_declrations::{Hash, TransactionReceipt, TransactionStatus};

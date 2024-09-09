@@ -8,7 +8,7 @@ use std::{
 use crate::{
     checked_amount::CheckedAmountOf,
     eth_types::Address,
-    lifecycles::EvmNetwork,
+    evm_config::EvmNetwork,
     logs::{PrintProxySink, DEBUG, INFO, TRACE_HTTP},
     numeric::{BlockNumber, GasAmount, LogIndex, TransactionCount, Wei, WeiPerGas},
     rpc_declrations::{
