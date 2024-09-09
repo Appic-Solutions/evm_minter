@@ -1,3 +1,4 @@
+use crate::endpoints::{RetrieveNativeStatus, Transaction, TxFinalizedStatus, WithdrawalStatus};
 use crate::evm_config::EvmNetwork;
 use crate::map::MultiKeyMap;
 use crate::numeric::{GasAmount, LedgerMintIndex, TransactionCount, TransactionNonce};
@@ -816,13 +817,13 @@ impl WithdrawalTransactions {
             .filter(|r| r.match_parameter(parameter))
             .map(|request| {
                 match self.processed_transaction_status(&request.native_ledger_burn_index()) {
-                    (RetrieveEthStatus::TxCreated, Some(tx)) => {
+                    (RetrieveNativeStatus::TxCreated, Some(tx)) => {
                         (request, WithdrawalStatus::TxCreated, Some(tx))
                     }
-                    (RetrieveEthStatus::TxSent(sent), Some(tx)) => {
+                    (RetrieveNativeStatus::TxSent(sent), Some(tx)) => {
                         (request, WithdrawalStatus::TxSent(sent), Some(tx))
                     }
-                    (RetrieveEthStatus::TxFinalized(status), Some(tx)) => {
+                    (RetrieveNativeStatus::TxFinalized(status), Some(tx)) => {
                         (request, WithdrawalStatus::TxFinalized(status), Some(tx))
                     }
                     _ => {
@@ -834,13 +835,13 @@ impl WithdrawalTransactions {
         pending.chain(processed).collect()
     }
 
-    pub fn transaction_status(&self, burn_index: &LedgerBurnIndex) -> RetrieveEthStatus {
+    pub fn transaction_status(&self, burn_index: &LedgerBurnIndex) -> RetrieveNativeStatus {
         if self
             .pending_withdrawal_requests
             .iter()
             .any(|r| &r.native_ledger_burn_index() == burn_index)
         {
-            return RetrieveEthStatus::Pending;
+            return RetrieveNativeStatus::Pending;
         }
         self.processed_transaction_status(burn_index).0
     }
@@ -848,14 +849,14 @@ impl WithdrawalTransactions {
     fn processed_transaction_status(
         &self,
         burn_index: &LedgerBurnIndex,
-    ) -> (RetrieveEthStatus, Option<&Eip1559TransactionRequest>) {
+    ) -> (RetrieveNativeStatus, Option<&Eip1559TransactionRequest>) {
         if let Some(tx) = self.created_tx.get_alt(burn_index) {
-            return (RetrieveEthStatus::TxCreated, Some(tx.as_ref()));
+            return (RetrieveNativeStatus::TxCreated, Some(tx.as_ref()));
         }
 
         if let Some(tx) = self.sent_tx.get_alt(burn_index).and_then(|txs| txs.last()) {
             return (
-                RetrieveEthStatus::TxSent(EthTransaction::from(tx.as_ref())),
+                RetrieveNativeStatus::TxSent(Transaction::from(tx.as_ref())),
                 Some(tx.as_ref().as_ref()),
             );
         }
@@ -865,7 +866,7 @@ impl WithdrawalTransactions {
                 self.find_reimbursed_transaction_by_native_token_ledger_burn_index(burn_index)
             {
                 return (
-                    RetrieveEthStatus::TxFinalized(TxFinalizedStatus::Reimbursed {
+                    RetrieveNativeStatus::TxFinalized(TxFinalizedStatus::Reimbursed {
                         reimbursed_in_block: reimbursed.reimbursed_in_block.get().into(),
                         transaction_hash: tx.transaction_hash().to_string(),
                         reimbursed_amount: reimbursed.reimbursed_amount.into(),
@@ -875,8 +876,8 @@ impl WithdrawalTransactions {
             }
             if tx.transaction_status() == &TransactionStatus::Failure {
                 return (
-                    RetrieveEthStatus::TxFinalized(TxFinalizedStatus::PendingReimbursement(
-                        EthTransaction {
+                    RetrieveNativeStatus::TxFinalized(TxFinalizedStatus::PendingReimbursement(
+                        Transaction {
                             transaction_hash: tx.transaction_hash().to_string(),
                         },
                     )),
@@ -885,7 +886,7 @@ impl WithdrawalTransactions {
             }
 
             return (
-                RetrieveEthStatus::TxFinalized(TxFinalizedStatus::Success {
+                RetrieveNativeStatus::TxFinalized(TxFinalizedStatus::Success {
                     transaction_hash: tx.transaction_hash().to_string(),
                     effective_transaction_fee: Some(tx.effective_transaction_fee().into()),
                 }),
@@ -893,7 +894,7 @@ impl WithdrawalTransactions {
             );
         }
 
-        (RetrieveEthStatus::NotFound, None)
+        (RetrieveNativeStatus::NotFound, None)
     }
 
     pub fn withdrawal_requests_batch(&self, requested_batch_size: usize) -> Vec<WithdrawalRequest> {

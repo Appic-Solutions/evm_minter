@@ -18,14 +18,14 @@ use crate::{
 // requires canister infrastructure to retrieve time
 pub fn apply_state_transition(state: &mut State, payload: &EventType) {
     match payload {
-        // EventType::Init(init_arg) => {
-        //     panic!("state re-initialization is not allowed: {init_arg:?}");
-        // }
-        // EventType::Upgrade(upgrade_arg) => {
-        //     state
-        //         .upgrade(upgrade_arg.clone())
-        //         .expect("applying upgrade event should succeed");
-        // }
+        EventType::Init(init_arg) => {
+            panic!("state re-initialization is not allowed: {init_arg:?}");
+        }
+        EventType::Upgrade(upgrade_arg) => {
+            state
+                .upgrade(upgrade_arg.clone())
+                .expect("applying upgrade event should succeed");
+        }
         EventType::AcceptedDeposit(native_event) => {
             state.record_event_to_mint(&native_event.clone().into());
         }
@@ -166,32 +166,32 @@ pub fn process_event(state: &mut State, payload: EventType) {
     record_event(payload);
 }
 
-// /// Recomputes the minter state from the event log.
-// ///
-// /// # Panics
-// ///
-// /// This function panics if:
-// ///   * The event log is empty.
-// ///   * The first event in the log is not an Init event.
-// ///   * One of the events in the log invalidates the minter's state invariants.
-// pub fn replay_events() -> State {
-//     with_event_iter(|iter| replay_events_internal(iter))
-// }
+/// Recomputes the minter state from the event log.
+///
+/// # Panics
+///
+/// This function panics if:
+///   * The event log is empty.
+///   * The first event in the log is not an Init event.
+///   * One of the events in the log invalidates the minter's state invariants.
+pub fn replay_events() -> State {
+    with_event_iter(|iter| replay_events_internal(iter))
+}
 
-// fn replay_events_internal<T: IntoIterator<Item = Event>>(events: T) -> State {
-//     let mut events_iter = events.into_iter();
-//     let mut state = match events_iter
-//         .next()
-//         .expect("the event log should not be empty")
-//     {
-//         Event {
-//             payload: EventType::Init(init_arg),
-//             ..
-//         } => State::try_from(init_arg).expect("state initialization should succeed"),
-//         other => panic!("the first event must be an Init event, got: {other:?}"),
-//     };
-//     for event in events_iter {
-//         apply_state_transition(&mut state, &event.payload);
-//     }
-//     state
-// }
+fn replay_events_internal<T: IntoIterator<Item = Event>>(events: T) -> State {
+    let mut events_iter = events.into_iter();
+    let mut state = match events_iter
+        .next()
+        .expect("the event log should not be empty")
+    {
+        Event {
+            payload: EventType::Init(init_arg),
+            ..
+        } => State::try_from(init_arg).expect("state initialization should succeed"),
+        other => panic!("the first event must be an Init event, got: {other:?}"),
+    };
+    for event in events_iter {
+        apply_state_transition(&mut state, &event.payload);
+    }
+    state
+}

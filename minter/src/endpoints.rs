@@ -274,8 +274,8 @@ pub enum WithdrawalStatus {
 // }
 
 pub mod events {
-    use crate::lifecycle::init::InitArg;
-    use crate::lifecycle::upgrade::UpgradeArg;
+    use crate::lifecycle::InitArg;
+    use crate::lifecycle::UpgradeArg;
     use candid::{CandidType, Deserialize, Nat, Principal};
     use serde_bytes::ByteBuf;
 
@@ -305,13 +305,13 @@ pub mod events {
 
     #[derive(CandidType, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub enum ReimbursementIndex {
-        CkEth {
+        Native {
             ledger_burn_index: Nat,
         },
-        CkErc20 {
-            cketh_ledger_burn_index: Nat,
+        Erc20 {
+            native_ledger_burn_index: Nat,
             ledger_id: Principal,
-            ckerc20_ledger_burn_index: Nat,
+            erc20_ledger_burn_index: Nat,
         },
     }
 
@@ -375,17 +375,17 @@ pub mod events {
             event_source: EventSource,
             reason: String,
         },
-        MintedCkEth {
+        MintedNative {
             event_source: EventSource,
             mint_block_index: Nat,
         },
-        SyncedToBlock {
-            block_number: Nat,
-        },
-        SyncedErc20ToBlock {
-            block_number: Nat,
-        },
-        AcceptedEthWithdrawalRequest {
+        // SyncedToBlock {
+        //     block_number: Nat,
+        // },
+        // SyncedErc20ToBlock {
+        //     block_number: Nat,
+        // },
+        AcceptedNativeWithdrawalRequest {
             withdrawal_amount: Nat,
             destination: String,
             ledger_burn_index: Nat,
@@ -409,7 +409,7 @@ pub mod events {
             withdrawal_id: Nat,
             transaction_receipt: TransactionReceipt,
         },
-        ReimbursedEthWithdrawal {
+        ReimbursedNativeWithdrawal {
             reimbursed_in_block: Nat,
             withdrawal_id: Nat,
             reimbursed_amount: Nat,
@@ -427,12 +427,12 @@ pub mod events {
             contract_address: Option<String>,
             block_number: Nat,
         },
-        AddedCkErc20Token {
-            chain_id: Nat,
-            address: String,
-            ckerc20_token_symbol: String,
-            ckerc20_ledger_id: Principal,
-        },
+        // AddedCkErc20Token {
+        //     chain_id: Nat,
+        //     address: String,
+        //     ckerc20_token_symbol: String,
+        //     ckerc20_ledger_id: Principal,
+        // },
         AcceptedErc20WithdrawalRequest {
             max_transaction_fee: Nat,
             withdrawal_amount: Nat,
@@ -451,7 +451,7 @@ pub mod events {
             to: Principal,
             to_subaccount: Option<[u8; 32]>,
         },
-        MintedCkErc20 {
+        MintedErc20 {
             event_source: EventSource,
             mint_block_index: Nat,
             ckerc20_token_symbol: String,

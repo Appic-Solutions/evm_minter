@@ -4,6 +4,7 @@ use minicbor::{Decode, Encode};
 use crate::{
     deposit_logs::{EventSource, ReceivedDepositEvent, ReceivedErc20Event, ReceivedNativeEvent},
     eth_types::Address,
+    lifecycle::{InitArg, UpgradeArg},
     numeric::{BlockNumber, LedgerBurnIndex, LedgerMintIndex},
     rpc_declrations::TransactionReceipt,
     tx::{Eip1559TransactionRequest, SignedEip1559TransactionRequest},
@@ -16,17 +17,17 @@ use super::transactions::{
 /// The event describing the ckETH minter state transition.
 #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq)]
 pub enum EventType {
-    /// The minter initialization event.
-    /// Must be the first event in the log.
-    // #[n(0)]
-    // Init(#[n(0)] InitArg),
-    // /// The minter upgraded with the specified arguments.
-    // #[n(1)]
-    // Upgrade(#[n(0)] UpgradeArg),
-    /// The minter discovered a ckETH deposit in the helper contract logs.
+    //  The minter initialization event.
+    //  Must be the first event in the log.
+    #[n(0)]
+    Init(#[n(0)] InitArg),
+    //  The minter upgraded with the specified arguments.
+    #[n(1)]
+    Upgrade(#[n(0)] UpgradeArg),
+    /// The minter discovered a deposit in the helper contract logs.
     #[n(2)]
     AcceptedDeposit(#[n(0)] ReceivedNativeEvent),
-    /// The minter discovered an invalid ckETH deposit in the helper contract logs.
+    /// The minter discovered an invalid deposit in the helper contract logs.
     #[n(4)]
     InvalidDeposit {
         /// The unique identifier of the deposit on the Ethereum network.

@@ -23,9 +23,12 @@ use crate::{
     erc20::ERC20TokenSymbol,
     eth_types::Address,
     evm_config::EvmNetwork,
+    lifecycle::UpgradeArg,
     logs::DEBUG,
     map::DedupMultiKeyMap,
-    numeric::{BlockNumber, Erc20Value, LedgerBurnIndex, LedgerMintIndex, Wei, WeiPerGas},
+    numeric::{
+        BlockNumber, Erc20Value, LedgerBurnIndex, LedgerMintIndex, TransactionNonce, Wei, WeiPerGas,
+    },
     rpc_declrations::{BlockTag, FixedSizeData, TransactionReceipt, TransactionStatus},
     tx::GasFeeEstimate,
 };
@@ -66,6 +69,7 @@ impl Display for InvalidEventReason {
         }
     }
 }
+#[derive(Debug, Eq, PartialEq)]
 pub enum InvalidStateError {
     InvalidTransactionNonce(String),
     InvalidEcdsaKeyName(String),
@@ -373,6 +377,58 @@ impl State {
             .expect("BUG: failed to decode transaction data from transaction issued by minter");
             self.erc20_balances.erc20_sub(*tx.destination(), value);
         }
+    }
+
+    fn upgrade(&mut self, upgrade_args: UpgradeArg) -> Result<(), InvalidStateError> {
+        use std::str::FromStr;
+
+        let UpgradeArg {
+            next_transaction_nonce,
+            native_minimum_withdrawal_amount,
+            helper_contract_address,
+            block_height,
+            last_scraped_block_number,
+            evm_rpc_id,
+            native_ledger_transfer_fee,
+        } = upgrade_args;
+        if let Some(nonce) = next_transaction_nonce {
+            let nonce = TransactionNonce::try_from(nonce)
+                .map_err(|e| InvalidStateError::InvalidTransactionNonce(format!("ERROR: {}", e)))?;
+            self.withdrawal_transactions
+                .update_next_transaction_nonce(nonce);
+        }
+        if let Some(amount) = native_minimum_withdrawal_amount {
+            let minimum_withdrawal_amount = Wei::try_from(amount).map_err(|e| {
+                InvalidStateError::InvalidMinimumWithdrawalAmount(format!("ERROR: {}", e))
+            })?;
+            self.native_minimum_withdrawal_amount = minimum_withdrawal_amount;
+        }
+        if let Some(minimum_amount) = native_ledger_transfer_fee {
+            let native_ledger_transfer_fee = Wei::try_from(minimum_amount).map_err(|e| {
+                InvalidStateError::InvalidMinimumLedgerTransferFee(format!("ERROR: {}", e))
+            })?;
+            self.native_ledger_transfer_fee = native_ledger_transfer_fee;
+        }
+        if let Some(address) = helper_contract_address {
+            let helper_contract_address = Address::from_str(&address).map_err(|e| {
+                InvalidStateError::InvalidHelperContractAddress(format!("ERROR: {}", e))
+            })?;
+            self.helper_contract_address = Some(helper_contract_address);
+        }
+
+        if let Some(block_number) = last_scraped_block_number {
+            self.last_scraped_block_number = BlockNumber::try_from(block_number).map_err(|e| {
+                InvalidStateError::InvalidLastScrapedBlockNumber(format!("ERROR: {}", e))
+            })?;
+        }
+        if let Some(block_height) = block_height {
+            self.block_height = block_height.into();
+        }
+
+        if let Some(evm_id) = evm_rpc_id {
+            self.evm_canister_id = evm_id;
+        }
+        self.validate_config()
     }
 }
 

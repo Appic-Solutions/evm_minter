@@ -2,13 +2,17 @@ use crate::endpoints::CandidBlockTag;
 use crate::erc20::ERC20TokenSymbol;
 use crate::eth_types::Address;
 use crate::evm_config::EvmNetwork;
-use crate::numeric::{BlockNumber, TransactionNonce, Wei, WeiPerGas, WeiPerGasUnit};
+use crate::logs::INFO;
+use crate::numeric::{BlockNumber, TransactionNonce, Wei, WeiPerGas};
 use crate::rpc_declrations::BlockTag;
+use crate::state::audit::{process_event, replay_events, EventType};
 use crate::state::transactions::WithdrawalTransactions;
-use crate::state::{InvalidStateError, State};
+use crate::state::{mutate_state, InvalidStateError, State, STATE};
+use crate::storage::total_event_count;
 use candid::types::number::Nat;
 use candid::types::principal::Principal;
 use candid::{CandidType, Deserialize};
+use ic_canister_log::log;
 use minicbor::{Decode, Encode};
 
 #[derive(CandidType, Deserialize, Clone, Debug, Encode, Decode, PartialEq, Eq)]
@@ -119,4 +123,44 @@ impl TryFrom<InitArg> for State {
         state.validate_config()?;
         Ok(state)
     }
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug, Default, Encode, Decode, PartialEq, Eq)]
+pub struct UpgradeArg {
+    #[cbor(n(0), with = "crate::cbor::nat::option")]
+    pub next_transaction_nonce: Option<Nat>,
+    #[cbor(n(1), with = "crate::cbor::nat::option")]
+    pub native_minimum_withdrawal_amount: Option<Nat>,
+    #[n(2)]
+    pub helper_contract_address: Option<String>,
+    #[n(3)]
+    pub block_height: Option<CandidBlockTag>,
+    #[cbor(n(4), with = "crate::cbor::nat::option")]
+    pub last_scraped_block_number: Option<Nat>,
+    #[cbor(n(5), with = "crate::cbor::principal::option")]
+    pub evm_rpc_id: Option<Principal>,
+    #[cbor(n(6), with = "crate::cbor::nat::option")]
+    pub native_ledger_transfer_fee: Option<Nat>,
+}
+
+pub fn post_upgrade(upgrade_args: Option<UpgradeArg>) {
+    let start = ic_cdk::api::instruction_counter();
+
+    STATE.with(|cell| {
+        *cell.borrow_mut() = Some(replay_events());
+    });
+    if let Some(args) = upgrade_args {
+        mutate_state(|s| process_event(s, EventType::Upgrade(args)))
+    }
+
+    let end = ic_cdk::api::instruction_counter();
+
+    let event_count = total_event_count();
+    let instructions_consumed = end - start;
+
+    log!(
+        INFO,
+        "[upgrade]: replaying {event_count} events consumed {instructions_consumed} instructions ({} instructions per event on average)",
+        instructions_consumed / event_count
+    );
 }
