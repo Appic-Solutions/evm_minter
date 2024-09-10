@@ -4,8 +4,8 @@ use crate::ledger_client::LedgerBurnError;
 // // use crate::ledger_client::LedgerBurnError;
 use crate::numeric::LedgerBurnIndex;
 use crate::rpc_declrations::TransactionReceipt;
-use crate::state::transactions;
-use crate::state::transactions::NativeWithdrawlRequest;
+use crate::state::transactions::NativeWithdrawalRequest;
+use crate::state::transactions::{self, Erc20WithdrawalRequest};
 use crate::tx::{SignedEip1559TransactionRequest, TransactionPrice};
 use candid::{CandidType, Deserialize, Nat, Principal};
 use icrc_ledger_types::icrc1::account::Account;
@@ -65,7 +65,7 @@ pub struct Erc20Balance {
 #[derive(CandidType, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct MinterInfo {
     pub minter_address: Option<String>,
-    pub erc20_helper_contract_address: Option<String>,
+    pub helper_smart_contract_address: Option<String>,
     pub supported_erc20_tokens: Option<Vec<Erc20Token>>,
     pub minimum_withdrawal_amount: Option<Nat>,
     pub block_height: Option<CandidBlockTag>,
@@ -129,8 +129,8 @@ pub enum CandidBlockTag {
     Finalized,
 }
 
-impl From<NativeWithdrawlRequest> for RetrieveNativeRequest {
-    fn from(value: NativeWithdrawlRequest) -> Self {
+impl From<NativeWithdrawalRequest> for RetrieveNativeRequest {
+    fn from(value: NativeWithdrawalRequest) -> Self {
         Self {
             block_index: Nat::from(value.ledger_burn_index.get()),
         }
@@ -200,6 +200,7 @@ pub enum WithdrawalError {
     InsufficientFunds { balance: Nat },
     InsufficientAllowance { allowance: Nat },
     TemporarilyUnavailable(String),
+    InvalidDestination(String),
 }
 
 impl From<LedgerBurnError> for WithdrawalError {
@@ -379,12 +380,10 @@ pub mod events {
             event_source: EventSource,
             mint_block_index: Nat,
         },
-        // SyncedToBlock {
-        //     block_number: Nat,
-        // },
-        // SyncedErc20ToBlock {
-        //     block_number: Nat,
-        // },
+        SyncedToBlock {
+            block_number: Nat,
+        },
+
         AcceptedNativeWithdrawalRequest {
             withdrawal_amount: Nat,
             destination: String,
@@ -424,7 +423,6 @@ pub mod events {
             transaction_hash: Option<String>,
         },
         SkippedBlock {
-            contract_address: Option<String>,
             block_number: Nat,
         },
         // AddedCkErc20Token {
@@ -438,9 +436,9 @@ pub mod events {
             withdrawal_amount: Nat,
             erc20_contract_address: String,
             destination: String,
-            cketh_ledger_burn_index: Nat,
-            ckerc20_ledger_id: Principal,
-            ckerc20_ledger_burn_index: Nat,
+            native_ledger_burn_index: Nat,
+            erc20_ledger_id: Principal,
+            erc20_ledger_burn_index: Nat,
             from: Principal,
             from_subaccount: Option<[u8; 32]>,
             created_at: u64,
@@ -454,7 +452,7 @@ pub mod events {
         MintedErc20 {
             event_source: EventSource,
             mint_block_index: Nat,
-            ckerc20_token_symbol: String,
+            erc20_token_symbol: String,
             erc20_contract_address: String,
         },
         QuarantinedDeposit {
@@ -463,5 +461,107 @@ pub mod events {
         QuarantinedReimbursement {
             index: ReimbursementIndex,
         },
+    }
+}
+
+#[derive(CandidType, Deserialize)]
+pub struct WithdrawErc20Arg {
+    pub amount: Nat,
+    pub erc20_ledger_id: Principal,
+    pub recipient: String,
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
+pub struct RetrieveErc20Request {
+    pub native_block_index: Nat,
+    pub erc20_block_index: Nat,
+}
+
+impl From<Erc20WithdrawalRequest> for RetrieveErc20Request {
+    fn from(value: Erc20WithdrawalRequest) -> Self {
+        Self {
+            native_block_index: candid::Nat::from(value.native_ledger_burn_index.get()),
+            erc20_block_index: candid::Nat::from(value.erc20_ledger_burn_index.get()),
+        }
+    }
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
+pub enum WithdrawErc20Error {
+    TokenNotSupported {
+        supported_tokens: Vec<Erc20Token>,
+    },
+
+    NativeLedgerError {
+        error: LedgerError,
+    },
+    Erc20LedgerError {
+        native_block_index: Nat,
+        error: LedgerError,
+    },
+    TemporarilyUnavailable(String),
+    InvalidDestination(String),
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
+pub enum LedgerError {
+    InsufficientFunds {
+        balance: Nat,
+        failed_burn_amount: Nat,
+        token_symbol: String,
+        ledger_id: Principal,
+    },
+    AmountTooLow {
+        minimum_burn_amount: Nat,
+        failed_burn_amount: Nat,
+        token_symbol: String,
+        ledger_id: Principal,
+    },
+    InsufficientAllowance {
+        allowance: Nat,
+        failed_burn_amount: Nat,
+        token_symbol: String,
+        ledger_id: Principal,
+    },
+    TemporarilyUnavailable(String),
+}
+
+impl From<LedgerBurnError> for LedgerError {
+    fn from(error: LedgerBurnError) -> Self {
+        match error {
+            LedgerBurnError::TemporarilyUnavailable { message, .. } => {
+                LedgerError::TemporarilyUnavailable(message)
+            }
+            LedgerBurnError::InsufficientFunds {
+                balance,
+                failed_burn_amount,
+                ledger,
+            } => LedgerError::InsufficientFunds {
+                balance,
+                failed_burn_amount,
+                token_symbol: ledger.token_symbol.to_string(),
+                ledger_id: ledger.id,
+            },
+            LedgerBurnError::InsufficientAllowance {
+                allowance,
+                failed_burn_amount,
+                ledger,
+            } => LedgerError::InsufficientAllowance {
+                allowance,
+                failed_burn_amount,
+                token_symbol: ledger.token_symbol.to_string(),
+                ledger_id: ledger.id,
+            },
+            LedgerBurnError::AmountTooLow {
+                minimum_burn_amount,
+                failed_burn_amount,
+                ledger,
+            } => LedgerError::AmountTooLow {
+                minimum_burn_amount,
+                failed_burn_amount,
+                token_symbol: ledger.token_symbol.to_string(),
+                ledger_id: ledger.id,
+            },
+        }
     }
 }

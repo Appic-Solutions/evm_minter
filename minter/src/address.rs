@@ -25,7 +25,6 @@ fn keccak(bytes: &[u8]) -> [u8; 32] {
 pub enum AddressValidationError {
     Invalid { error: String },
     NotSupported(Address),
-    Blocked(Address),
 }
 
 impl Display for AddressValidationError {
@@ -36,9 +35,6 @@ impl Display for AddressValidationError {
             }
             AddressValidationError::NotSupported(address) => {
                 write!(f, "Address {} is not supported", address)
-            }
-            AddressValidationError::Blocked(address) => {
-                write!(f, "address {} is blocked", address)
             }
         }
     }

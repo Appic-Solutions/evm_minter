@@ -62,12 +62,9 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
                 Some(*erc20_contract_address),
             );
         }
-        // EventType::SyncedToBlock { block_number } => {
-        //     state.last_scraped_block_number = *block_number;
-        // }
-        // EventType::SyncedErc20ToBlock { block_number } => {
-        //     state.last_erc20_scraped_block_number = *block_number;
-        // }
+        EventType::SyncedToBlock { block_number } => {
+            state.last_scraped_block_number = *block_number;
+        }
         EventType::AcceptedNativeWithdrawalRequest(request) => {
             state
                 .withdrawal_transactions
@@ -141,14 +138,15 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
                     },
                     reimbursed.reimbursed_in_block,
                 );
-        } // EventType::FailedErc20WithdrawalRequest(cketh_reimbursement_request) => {
-        //     state.withdrawal_transactions.record_reimbursement_request(
-        //         ReimbursementIndex::CkEth {
-        //             ledger_burn_index: cketh_reimbursement_request.ledger_burn_index,
-        //         },
-        //         cketh_reimbursement_request.clone(),
-        //     )
-        // }
+        }
+        EventType::FailedErc20WithdrawalRequest(native_reimbursement_request) => {
+            state.withdrawal_transactions.record_reimbursement_request(
+                ReimbursementIndex::Native {
+                    ledger_burn_index: native_reimbursement_request.ledger_burn_index,
+                },
+                native_reimbursement_request.clone(),
+            )
+        }
         EventType::QuarantinedDeposit { event_source } => {
             state.record_quarantined_deposit(*event_source);
         }

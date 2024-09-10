@@ -11,7 +11,8 @@ use crate::{
 };
 
 use super::transactions::{
-    Erc20WithdrawalRequest, NativeWithdrawlRequest, Reimbursed, ReimbursementIndex,
+    Erc20WithdrawalRequest, NativeWithdrawalRequest, Reimbursed, ReimbursementIndex,
+    ReimbursementRequest,
 };
 
 /// The event describing the ckETH minter state transition.
@@ -47,16 +48,16 @@ pub enum EventType {
         #[cbor(n(1), with = "crate::cbor::id")]
         mint_block_index: LedgerMintIndex,
     },
-    // /// The minter processed the helper smart contract logs up to the specified height.
-    // #[n(6)]
-    // SyncedToBlock {
-    //     /// The last processed block number for ETH helper contract (inclusive).
-    //     #[n(0)]
-    //     block_number: BlockNumber,
-    // },
-    // /// The minter accepted a new ETH withdrawal request.
+    /// The minter processed the helper smart contract logs up to the specified height.
+    #[n(6)]
+    SyncedToBlock {
+        /// The last processed block number for ETH helper contract (inclusive).
+        #[n(0)]
+        block_number: BlockNumber,
+    },
+    /// The minter accepted a new ETH withdrawal request.
     #[n(7)]
-    AcceptedNativeWithdrawalRequest(#[n(0)] NativeWithdrawlRequest),
+    AcceptedNativeWithdrawalRequest(#[n(0)] NativeWithdrawalRequest),
     // /// The minter created a new transaction to handle a withdrawal request.
     #[n(8)]
     CreatedTransaction {
@@ -121,13 +122,7 @@ pub enum EventType {
         #[n(3)]
         erc20_contract_address: Address,
     },
-    // /// The minter processed the helper smart contract logs up to the specified height.
-    // #[n(18)]
-    // SyncedErc20ToBlock {
-    //     /// The last processed block number for ERC20 helper contract (inclusive).
-    //     #[n(0)]
-    //     block_number: BlockNumber,
-    // },
+
     #[n(19)]
     ReimbursedErc20Withdrawal {
         #[cbor(n(0), with = "crate::cbor::id")]
@@ -137,9 +132,9 @@ pub enum EventType {
         #[n(2)]
         reimbursed: Reimbursed,
     },
-    // /// The minter could not burn the given amount of ckERC20 tokens.
-    // #[n(20)]
-    // FailedErc20WithdrawalRequest(#[n(0)] ReimbursementRequest),
+    /// The minter could not burn the given amount of ckERC20 tokens.
+    #[n(20)]
+    FailedErc20WithdrawalRequest(#[n(0)] ReimbursementRequest),
     /// The minter unexpectedly panic while processing a deposit.
     // /// The deposit is quarantined to prevent any double minting and
     // /// will not be processed without further manual intervention.

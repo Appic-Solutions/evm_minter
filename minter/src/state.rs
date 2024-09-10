@@ -20,7 +20,7 @@ use transactions::{
 use crate::{
     address::ecdsa_public_key_to_address,
     deposit_logs::{EventSource, ReceivedDepositEvent},
-    erc20::ERC20TokenSymbol,
+    erc20::{ERC20Token, ERC20TokenSymbol},
     eth_types::Address,
     evm_config::EvmNetwork,
     lifecycle::UpgradeArg,
@@ -152,6 +152,14 @@ pub struct State {
 }
 
 impl State {
+    pub fn minter_address(&self) -> Option<Address> {
+        let pubkey = PublicKey::deserialize_sec1(&self.ecdsa_public_key.as_ref()?.public_key)
+            .unwrap_or_else(|e| {
+                ic_cdk::trap(&format!("failed to decode minter's public key: {:?}", e))
+            });
+        Some(ecdsa_public_key_to_address(&pubkey))
+    }
+
     pub fn validate_config(&self) -> Result<(), InvalidStateError> {
         if self.ecdsa_key_name.trim().is_empty() {
             return Err(InvalidStateError::InvalidEcdsaKeyName(
@@ -377,6 +385,28 @@ impl State {
             .expect("BUG: failed to decode transaction data from transaction issued by minter");
             self.erc20_balances.erc20_sub(*tx.destination(), value);
         }
+    }
+
+    pub fn find_erc20_token_by_ledger_id(&self, erc20_ledger_id: &Principal) -> Option<ERC20Token> {
+        self.erc20_tokens
+            .get_entry(erc20_ledger_id)
+            .map(|(erc20_address, symbol)| ERC20Token {
+                erc20_contract_address: *erc20_address,
+                erc20_ledger_id: *erc20_ledger_id,
+                chain_id: self.evm_network,
+                erc20_token_symbol: symbol.clone(),
+            })
+    }
+
+    pub fn supported_erc20_tokens(&self) -> impl Iterator<Item = ERC20Token> + '_ {
+        self.erc20_tokens
+            .iter()
+            .map(|(ledger_id, erc20_address, symbol)| ERC20Token {
+                erc20_contract_address: *erc20_address,
+                erc20_ledger_id: *ledger_id,
+                chain_id: self.evm_network,
+                erc20_token_symbol: symbol.clone(),
+            })
     }
 
     fn upgrade(&mut self, upgrade_args: UpgradeArg) -> Result<(), InvalidStateError> {

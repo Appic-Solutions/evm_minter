@@ -164,3 +164,9 @@ pub fn post_upgrade(upgrade_args: Option<UpgradeArg>) {
         instructions_consumed / event_count
     );
 }
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub enum MinterArg {
+    InitArg(InitArg),
+    UpgradeArg(UpgradeArg),
+}

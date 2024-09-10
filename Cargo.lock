@@ -444,6 +444,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "evm_minter"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "bytes",
+ "candid",
+ "ethnum",
+ "evm_rpc_client",
+ "futures",
+ "hex",
+ "hex-literal",
+ "ic-canister-log",
+ "ic-cdk",
+ "ic-crypto-secp256k1",
+ "ic-crypto-sha3",
+ "ic-management-canister-types",
+ "ic-stable-structures",
+ "ic-utils-ensure",
+ "icrc-ledger-client-cdk",
+ "icrc-ledger-types",
+ "minicbor",
+ "minicbor-derive",
+ "num-bigint",
+ "num-traits",
+ "phantom_newtype",
+ "proptest",
+ "rlp",
+ "scopeguard",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "thiserror",
+ "thousands",
+]
+
+[[package]]
 name = "evm_rpc_client"
 version = "0.1.0"
 dependencies = [
@@ -1016,42 +1052,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8a240ddb74feaf34a79a7add65a741f3167852fba007066dcac1ca548d89c08"
 dependencies = [
  "adler",
-]
-
-[[package]]
-name = "minter"
-version = "0.1.0"
-dependencies = [
- "assert_matches",
- "bytes",
- "candid",
- "ethnum",
- "evm_rpc_client",
- "futures",
- "hex",
- "hex-literal",
- "ic-canister-log",
- "ic-cdk",
- "ic-crypto-secp256k1",
- "ic-crypto-sha3",
- "ic-management-canister-types",
- "ic-stable-structures",
- "ic-utils-ensure",
- "icrc-ledger-client-cdk",
- "icrc-ledger-types",
- "minicbor",
- "minicbor-derive",
- "num-bigint",
- "num-traits",
- "phantom_newtype",
- "proptest",
- "rlp",
- "scopeguard",
- "serde",
- "serde_bytes",
- "serde_json",
- "thiserror",
- "thousands",
 ]
 
 [[package]]

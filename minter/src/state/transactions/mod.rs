@@ -34,7 +34,7 @@ impl fmt::Debug for Subaccount {
 
 /// Naticve token withdrawal request issued by the user.
 #[derive(Clone, Eq, PartialEq, Encode, Decode)]
-pub struct NativeWithdrawlRequest {
+pub struct NativeWithdrawalRequest {
     /// The NAtive token amount that the receiver will get, not accounting for the EVM transaction fees.
     #[n(0)]
     pub withdrawal_amount: Wei,
@@ -98,9 +98,9 @@ impl fmt::Debug for DebugPrincipal<'_> {
     }
 }
 
-impl fmt::Debug for NativeWithdrawlRequest {
+impl fmt::Debug for NativeWithdrawalRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let NativeWithdrawlRequest {
+        let NativeWithdrawalRequest {
             withdrawal_amount,
             destination,
             ledger_burn_index,
@@ -157,7 +157,7 @@ pub enum WithdrawalSearchParameter {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum WithdrawalRequest {
-    Native(NativeWithdrawlRequest),
+    Native(NativeWithdrawalRequest),
     Erc20(Erc20WithdrawalRequest),
 }
 
@@ -227,8 +227,8 @@ impl WithdrawalRequest {
     }
 }
 
-impl From<NativeWithdrawlRequest> for WithdrawalRequest {
-    fn from(value: NativeWithdrawlRequest) -> Self {
+impl From<NativeWithdrawalRequest> for WithdrawalRequest {
+    fn from(value: NativeWithdrawalRequest) -> Self {
         WithdrawalRequest::Native(value)
     }
 }
