@@ -50,13 +50,13 @@ pub const HEADER_SIZE_LIMIT: u64 = 2 * 1024;
 #[derive(Debug)]
 pub struct RpcClient {
     evm_rpc_client: Option<EvmRpcClient<PrintProxySink>>,
-    chain: EvmNetwork,
+    // chain: EvmNetwork,
 }
 impl RpcClient {
     pub fn from_state(state: &State) -> Self {
         let mut client = Self {
             evm_rpc_client: None,
-            chain: state.evm_network,
+            // chain: state.evm_network,
         };
         const MIN_ATTACHED_CYCLES: u128 = 300_000_000_000;
 

@@ -15,7 +15,7 @@ use std::ops::Rem;
 ///
 /// # Arithmetic
 /// ```
-///  use minter::checked_amount::CheckedAmountOf;
+///  use evm_minter::checked_amount::CheckedAmountOf;
 ///
 /// enum MetricApple {}
 /// type Apples = CheckedAmountOf<MetricApple>;
@@ -153,7 +153,7 @@ impl<Unit> CheckedAmountOf<Unit> {
     /// Returns the display implementation of the inner value.
     /// Useful to avoid thousands separators if value is used for example in URLs.
     /// ```
-    /// use minter::checked_amount::CheckedAmountOf;
+    /// use evm_minter::checked_amount::CheckedAmountOf;
     ///
     /// enum MetricApple{}
     /// type Apples = CheckedAmountOf<MetricApple>;
