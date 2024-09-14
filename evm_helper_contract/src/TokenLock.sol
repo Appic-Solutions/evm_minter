@@ -67,7 +67,7 @@ contract TokenLock is Ownable, AccessControl {
      * @param amount The amount of tokens to lock.
      * @param principalId A unique identifier associated with the lock operation.
      */
-    function lockTokens(
+    function deposit(
         address token,
         uint256 amount,
         bytes memory principalId

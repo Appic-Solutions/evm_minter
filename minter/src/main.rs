@@ -58,21 +58,23 @@ fn validate_caller_not_anonymous() -> candid::Principal {
 }
 
 fn setup_timers() {
-    // ic_cdk_timers::set_timer(Duration::from_secs(0), || {
-    //     // Initialize the minter's public key to make the address known.
-    //     ic_cdk::spawn(async {
-    //         let _ = lazy_call_ecdsa_public_key().await;
-    //     })
-    // });
-    // // Start scraping logs immediately after the install, then repeat with the interval.
-    // ic_cdk_timers::set_timer(Duration::from_secs(0), || ic_cdk::spawn(scrape_logs()));
-    // ic_cdk_timers::set_timer_interval(SCRAPING_ETH_LOGS_INTERVAL, || ic_cdk::spawn(scrape_logs()));
-    // ic_cdk_timers::set_timer_interval(PROCESS_ETH_RETRIEVE_TRANSACTIONS_INTERVAL, || {
-    //     ic_cdk::spawn(process_retrieve_eth_requests())
-    // });
-    // ic_cdk_timers::set_timer_interval(PROCESS_REIMBURSEMENT, || {
-    //     ic_cdk::spawn(process_reimbursement())
-    // });
+    ic_cdk_timers::set_timer(Duration::from_secs(0), || {
+        // Initialize the minter's public key to make the address known.
+        ic_cdk::spawn(async {
+            let _ = lazy_call_ecdsa_public_key().await;
+        })
+    });
+    // Start scraping logs immediately after the install, then repeat with the interval.
+    ic_cdk_timers::set_timer(Duration::from_secs(0), || ic_cdk::spawn(scrape_logs()));
+    ic_cdk_timers::set_timer_interval(SCRAPING_DEPOSIT_LOGS_INTERVAL, || {
+        ic_cdk::spawn(scrape_logs())
+    });
+    ic_cdk_timers::set_timer_interval(PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_INTERVAL, || {
+        ic_cdk::spawn(process_retrieve_tokens_requests())
+    });
+    ic_cdk_timers::set_timer_interval(PROCESS_REIMBURSEMENT, || {
+        ic_cdk::spawn(process_reimbursement())
+    });
 }
 
 #[init]
@@ -280,7 +282,7 @@ async fn withdraw_native_token(
 }
 
 #[update]
-async fn retrieve_native_twin_status(block_index: u64) -> RetrieveNativeStatus {
+async fn retrieve_native_status(block_index: u64) -> RetrieveNativeStatus {
     let ledger_burn_index = LedgerBurnIndex::new(block_index);
     read_state(|s| {
         s.withdrawal_transactions
@@ -475,7 +477,7 @@ async fn estimate_erc20_transaction_fee() -> Option<Wei> {
 }
 
 // #[update]
-// async fn add_ckerc20_token(erc20_token: AddCkErc20Token) {
+// async fn add_erc20_token(erc20_token: AddErc20Token) {
 //     let orchestrator_id = read_state(|s| s.ledger_suite_orchestrator_id)
 //         .unwrap_or_else(|| ic_cdk::trap("ERROR: ERC-20 feature is not activated"));
 //     if orchestrator_id != ic_cdk::caller() {
@@ -484,9 +486,9 @@ async fn estimate_erc20_transaction_fee() -> Option<Wei> {
 //             orchestrator_id
 //         ));
 //     }
-//     let ckerc20_token = erc20::CkErc20Token::try_from(erc20_token)
+//     let erc20_token = erc20::Erc20Token::try_from(erc20_token)
 //         .unwrap_or_else(|e| ic_cdk::trap(&format!("ERROR: {}", e)));
-//     mutate_state(|s| process_event(s, EventType::AddedCkErc20Token(ckerc20_token)));
+//     mutate_state(|s| process_event(s, EventType::AddedErc20Token(erc20_token)));
 // }
 
 #[update]
@@ -784,218 +786,6 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
         total_event_count: storage::total_event_count(),
     }
 }
-
-// #[query(hidden = true)]
-// fn http_request(req: HttpRequest) -> HttpResponse {
-//     use ic_metrics_encoder::MetricsEncoder;
-
-//     if ic_cdk::api::data_certificate().is_none() {
-//         ic_cdk::trap("update call rejected");
-//     }
-
-//     if req.path() == "/metrics" {
-//         let mut writer = MetricsEncoder::new(vec![], ic_cdk::api::time() as i64 / 1_000_000);
-
-//         fn encode_metrics(w: &mut MetricsEncoder<Vec<u8>>) -> std::io::Result<()> {
-//             const WASM_PAGE_SIZE_IN_BYTES: f64 = 65536.0;
-
-//             read_state(|s| {
-//                 w.encode_gauge(
-//                     "cketh_minter_stable_memory_bytes",
-//                     ic_cdk::api::stable::stable64_size() as f64 * WASM_PAGE_SIZE_IN_BYTES,
-//                     "Size of the stable memory allocated by this canister.",
-//                 )?;
-
-//                 w.encode_gauge(
-//                     "cketh_minter_heap_memory_bytes",
-//                     heap_memory_size_bytes() as f64,
-//                     "Size of the heap memory allocated by this canister.",
-//                 )?;
-
-//                 w.gauge_vec("cycle_balance", "Cycle balance of this canister.")?
-//                     .value(
-//                         &[("canister", "cketh-minter")],
-//                         ic_cdk::api::canister_balance128() as f64,
-//                     )?;
-
-//                 w.encode_gauge(
-//                     "cketh_minter_last_observed_block",
-//                     s.last_observed_block_number
-//                         .map(|n| n.as_f64())
-//                         .unwrap_or(0.0),
-//                     "The last Ethereum block the ckETH minter observed.",
-//                 )?;
-
-//                 w.encode_gauge(
-//                     "cketh_minter_last_processed_block",
-//                     s.last_scraped_block_number.as_f64(),
-//                     "The last Ethereum block the ckETH minter checked for ckETH deposits.",
-//                 )?;
-
-//                 w.encode_gauge(
-//                     "ckerc20_minter_last_processed_block",
-//                     s.last_erc20_scraped_block_number.as_f64(),
-//                     "The last Ethereum block the ckETH minter checked for ckERC20 deposits.",
-//                 )?;
-
-//                 w.encode_counter(
-//                     "cketh_minter_skipped_blocks",
-//                     s.skipped_blocks
-//                         .values()
-//                         .flat_map(|blocks| blocks.iter())
-//                         .count() as f64,
-//                     "Total count of Ethereum blocks that were skipped for deposits.",
-//                 )?;
-
-//                 w.gauge_vec(
-//                     "cketh_minter_accepted_deposits",
-//                     "The number of deposits the ckETH minter processed, by status.",
-//                 )?
-//                 .value(&[("status", "accepted")], s.minted_events.len() as f64)?
-//                 .value(&[("status", "rejected")], s.invalid_events.len() as f64)?;
-
-//                 w.encode_gauge(
-//                     "cketh_event_count",
-//                     storage::total_event_count() as f64,
-//                     "Total number of events in the event log.",
-//                 )?;
-//                 w.encode_gauge(
-//                     "cketh_minter_eth_balance",
-//                     s.eth_balance.eth_balance().as_f64(),
-//                     "Known amount of ETH on the minter's address",
-//                 )?;
-//                 let mut erc20_balances = w.gauge_vec(
-//                     "cketh_minter_erc20_balances",
-//                     "Known amount of ERC-20 on the minter's address",
-//                 )?;
-//                 for (token, balance) in s.erc20_balances_by_token_symbol().iter() {
-//                     erc20_balances = erc20_balances
-//                         .value(&[("erc20_token", &token.to_string())], balance.as_f64())?;
-//                 }
-//                 w.encode_gauge(
-//                     "cketh_minter_total_effective_tx_fees",
-//                     s.eth_balance.total_effective_tx_fees().as_f64(),
-//                     "Total amount of fees across all finalized transactions ckETH -> ETH",
-//                 )?;
-//                 w.encode_gauge(
-//                     "cketh_minter_total_unspent_tx_fees",
-//                     s.eth_balance.total_unspent_tx_fees().as_f64(),
-//                     "Total amount of unspent fees across all finalized transaction ckETH -> ETH",
-//                 )?;
-
-//                 let now_nanos = ic_cdk::api::time();
-//                 let age_nanos = now_nanos.saturating_sub(
-//                     s.eth_transactions
-//                         .oldest_incomplete_withdrawal_timestamp()
-//                         .unwrap_or(now_nanos),
-//                 );
-//                 w.encode_gauge(
-//                     "cketh_oldest_incomplete_eth_withdrawal_request_age_seconds",
-//                     (age_nanos / 1_000_000_000) as f64,
-//                     "The age of the oldest incomplete ETH withdrawal request in seconds.",
-//                 )?;
-
-//                 w.encode_gauge(
-//                     "cketh_minter_last_max_fee_per_gas",
-//                     s.last_transaction_price_estimate
-//                         .clone()
-//                         .map(|(_, fee)| fee.estimate_max_fee_per_gas().as_f64())
-//                         .unwrap_or_default(),
-//                     "Last max fee per gas",
-//                 )?;
-
-//                 evm_minter::eth_rpc::encode_metrics(w)?;
-
-//                 Ok(())
-//             })
-//         }
-
-//         match encode_metrics(&mut writer) {
-//             Ok(()) => HttpResponseBuilder::ok()
-//                 .header("Content-Type", "text/plain; version=0.0.4")
-//                 .with_body_and_content_length(writer.into_inner())
-//                 .build(),
-//             Err(err) => {
-//                 HttpResponseBuilder::server_error(format!("Failed to encode metrics: {}", err))
-//                     .build()
-//             }
-//         }
-//     } else if req.path() == "/dashboard" {
-//         use askama::Template;
-//         let dashboard = read_state(dashboard::DashboardTemplate::from_state);
-//         HttpResponseBuilder::ok()
-//             .header("Content-Type", "text/html; charset=utf-8")
-//             .with_body_and_content_length(dashboard.render().unwrap())
-//             .build()
-//     } else if req.path() == "/logs" {
-//         use evm_minter::logs::{Log, Priority, Sort};
-//         use std::str::FromStr;
-
-//         let max_skip_timestamp = match req.raw_query_param("time") {
-//             Some(arg) => match u64::from_str(arg) {
-//                 Ok(value) => value,
-//                 Err(_) => {
-//                     return HttpResponseBuilder::bad_request()
-//                         .with_body_and_content_length("failed to parse the 'time' parameter")
-//                         .build();
-//                 }
-//             },
-//             None => 0,
-//         };
-
-//         let mut log: Log = Default::default();
-
-//         match req.raw_query_param("priority") {
-//             Some(priority_str) => match Priority::from_str(priority_str) {
-//                 Ok(priority) => match priority {
-//                     Priority::Info => log.push_logs(Priority::Info),
-//                     Priority::TraceHttp => log.push_logs(Priority::TraceHttp),
-//                     Priority::Debug => log.push_logs(Priority::Debug),
-//                 },
-//                 Err(_) => log.push_all(),
-//             },
-//             None => log.push_all(),
-//         }
-
-//         log.entries
-//             .retain(|entry| entry.timestamp >= max_skip_timestamp);
-
-//         fn ordering_from_query_params(sort: Option<&str>, max_skip_timestamp: u64) -> Sort {
-//             match sort {
-//                 Some(ord_str) => match Sort::from_str(ord_str) {
-//                     Ok(order) => order,
-//                     Err(_) => {
-//                         if max_skip_timestamp == 0 {
-//                             Sort::Ascending
-//                         } else {
-//                             Sort::Descending
-//                         }
-//                     }
-//                 },
-//                 None => {
-//                     if max_skip_timestamp == 0 {
-//                         Sort::Ascending
-//                     } else {
-//                         Sort::Descending
-//                     }
-//                 }
-//             }
-//         }
-
-//         log.sort_logs(ordering_from_query_params(
-//             req.raw_query_param("sort"),
-//             max_skip_timestamp,
-//         ));
-
-//         const MAX_BODY_SIZE: usize = 2_000_000;
-//         HttpResponseBuilder::ok()
-//             .header("Content-Type", "application/json; charset=utf-8")
-//             .with_body_and_content_length(log.serialize_logs(MAX_BODY_SIZE))
-//             .build()
-//     } else {
-//         HttpResponseBuilder::not_found().build()
-//     }
-// }
 
 #[cfg(feature = "debug_checks")]
 #[query]
