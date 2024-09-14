@@ -32,6 +32,8 @@ use crate::{
     rpc_declrations::{BlockTag, FixedSizeData, TransactionReceipt, TransactionStatus},
     tx::GasFeeEstimate,
 };
+use strum_macros::EnumIter;
+
 use ic_cdk::api::management_canister::ecdsa::EcdsaPublicKeyResponse;
 
 thread_local! {
@@ -612,7 +614,7 @@ impl Erc20Balances {
     }
 }
 
-#[derive(Debug, Hash, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Hash, Copy, Clone, PartialEq, Eq, EnumIter)]
 pub enum TaskType {
     Mint,
     RetrieveEth,

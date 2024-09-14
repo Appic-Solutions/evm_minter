@@ -2,7 +2,7 @@
 // use crate::lifecycle::upgrade::UpgradeArg;
 use candid::{CandidType, Deserialize};
 use minicbor::{Decode, Encode};
-use std::fmt::{write, Display, Formatter};
+use std::fmt::{Display, Formatter};
 
 #[derive(CandidType, Clone, Copy, Deserialize, Debug, Eq, PartialEq, Hash, Encode, Decode)]
 #[cbor(index_only)]
