@@ -50,13 +50,13 @@ pub const HEADER_SIZE_LIMIT: u64 = 2 * 1024;
 #[derive(Debug)]
 pub struct RpcClient {
     evm_rpc_client: Option<EvmRpcClient<PrintProxySink>>,
-    // chain: EvmNetwork,
+    chain: EvmNetwork,
 }
 impl RpcClient {
     pub fn from_state(state: &State) -> Self {
         let mut client = Self {
             evm_rpc_client: None,
-            // chain: state.evm_network,
+            chain: state.evm_network,
         };
         const MIN_ATTACHED_CYCLES: u128 = 300_000_000_000;
 
@@ -409,13 +409,12 @@ impl<T: std::fmt::Debug + std::cmp::PartialEq + Clone> ReducedResult<T> {
                 Err(MultiCallError::InconsistentResults(
                     converted_to_single_call_erro,
                 ))
-                // Err(MultiCallError::InconsistentResults(result))
             }
         };
         Self { result }
     }
 
-    // Reduce the inconsistent result with the starategy that if there is even ingle inconsistent resposne,
+    // Reduce the inconsistent result with the starategy that if there is even a single inconsistent resposne,
     // the new reduced result will be an inconsistent multierror call type.
     pub fn reduce_with_equality(self) -> Self {
         match self.result {
