@@ -315,7 +315,7 @@ impl<T: Clone> MultiCallError<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReducedResult<T> {
     result: Result<T, MultiCallError<T>>,
 }
@@ -744,5 +744,31 @@ pub fn filter_inconsistent_ok_results<T>(
     inconsistent_results
         .into_iter()
         .filter_map(|(rpc_service, result)| result.ok().map(|value| (rpc_service, value)))
+        .collect()
+}
+pub fn filter_inconsistent_error_results<T>(
+    inconsistent_results: Vec<(EvmRpcService, Result<T, SingleCallError>)>,
+) -> Vec<(EvmRpcService, SingleCallError)> {
+    inconsistent_results
+        .into_iter()
+        .filter_map(|(rpc_service, result)| result.err().map(|error| (rpc_service, error)))
+        .collect()
+}
+
+pub fn only_inconsistent_ok_results_without_providers<T: Clone>(
+    inconsistent_results: &Vec<(EvmRpcService, Result<T, SingleCallError>)>,
+) -> Vec<T> {
+    inconsistent_results
+        .into_iter()
+        .filter_map(|(_rpc_service, result)| result.clone().ok().map(|value| value))
+        .collect()
+}
+
+pub fn only_inconsistent_error_results_without_providers<T: Clone>(
+    inconsistent_results: &Vec<(EvmRpcService, Result<T, SingleCallError>)>,
+) -> Vec<SingleCallError> {
+    inconsistent_results
+        .into_iter()
+        .filter_map(|(_rpc_service, result)| result.clone().err().map(|error| error))
         .collect()
 }

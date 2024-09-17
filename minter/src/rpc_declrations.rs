@@ -1,14 +1,13 @@
-use candid::Nat;
+use crate::endpoints::CandidBlockTag;
+use crate::eth_types::serde_data;
+use crate::eth_types::Address;
+use crate::numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas};
 use evm_rpc_client::types::candid::SendRawTransactionStatus as EvmSendRawTransactionStatus;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
-
-use crate::endpoints::CandidBlockTag;
-use crate::eth_types::Address;
-use crate::numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas};
 
 pub type Quantity = ethnum::u256;
 
@@ -19,7 +18,7 @@ pub fn into_nat(quantity: Quantity) -> candid::Nat {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(transparent)]
-pub struct Data(pub Vec<u8>);
+pub struct Data(#[serde(with = "serde_data")] pub Vec<u8>);
 
 impl std::str::FromStr for Data {
     type Err = String;
@@ -38,7 +37,7 @@ impl AsRef<[u8]> for Data {
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(transparent)]
-pub struct FixedSizeData(pub [u8; 32]);
+pub struct FixedSizeData(#[serde(with = "serde_data")] pub [u8; 32]);
 
 impl AsRef<[u8]> for FixedSizeData {
     fn as_ref(&self) -> &[u8] {
@@ -85,11 +84,15 @@ impl UpperHex for FixedSizeData {
 }
 
 #[derive(
-    Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash, Ord, PartialOrd, Encode, Decode,
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Decode, Deserialize, Encode, Serialize,
 )]
 #[serde(transparent)]
 #[cbor(transparent)]
-pub struct Hash(#[cbor(n(0), with = "minicbor::bytes")] pub [u8; 32]);
+pub struct Hash(
+    #[serde(with = "serde_data")]
+    #[cbor(n(0), with = "minicbor::bytes")]
+    pub [u8; 32],
+);
 
 impl Debug for Hash {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -311,7 +314,7 @@ pub struct Block {
     pub base_fee_per_gas: Wei,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, Eq, PartialEq, Debug, Decode, Deserialize, Encode, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionReceipt {
     /// The hash of the block containing the transaction.

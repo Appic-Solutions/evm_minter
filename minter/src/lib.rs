@@ -21,6 +21,7 @@ pub mod rpc_client;
 pub mod rpc_declrations;
 pub mod state;
 pub mod storage;
+pub mod test_fixtures;
 pub mod tx;
 pub mod withdraw;
 

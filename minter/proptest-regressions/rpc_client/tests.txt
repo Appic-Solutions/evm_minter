@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 71e2617cbc927dc4a94571ab6d48163cd637a8b3126117c4fd1ff400c6305f28 # shrinks to evm_tx_status = Ok(None), first_error = ProviderError(NoPermission), second_error = ProviderError(NoPermission), third_error = ProviderError(NoPermission)
+cc 5a1d9396f202f78ce29544d9611649d5cf09f24af12d04aeed7e713f52b348cd # shrinks to minter_fee_history = FeeHistory { oldest_block: 0, base_fee_per_gas: [0], reward: [[0]] }, gas_used_ratio = [0.0], first_error = ProviderError(NoPermission), second_error = JsonRpcError(JsonRpcError { code: 150814667357566, message: ",\u{f5ef8}𱬵�¥/&i\\<¥\u{7f}\u{351b3}\u{88f9a}\r\u{2f711}\u{1b}\\*U\tÿ" }), third_error = JsonRpcError(JsonRpcError { code: -5874801221643964632, message: "o%�\t\u{202e}.Þ6?y🕴q" })

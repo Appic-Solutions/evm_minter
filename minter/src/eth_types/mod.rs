@@ -7,6 +7,7 @@ use std::fmt;
 use std::fmt::{Formatter, LowerHex, UpperHex};
 use std::str::FromStr;
 
+pub mod serde_data;
 /// An Ethereum account address.
 #[derive(
     Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Encode, Decode,
