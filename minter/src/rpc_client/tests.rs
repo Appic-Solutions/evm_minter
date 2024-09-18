@@ -670,19 +670,16 @@ mod evm_rpc_conversion {
         only_inconsistent_error_results_without_providers,
         only_inconsistent_ok_results_without_providers, TransactionReceipt,
     };
-    use crate::rpc_client::{Block, FeeHistory, LogEntry, MultiCallError, Reduce, ReducedResult};
-    use crate::rpc_declrations::SendRawTransactionResult;
+    use crate::rpc_client::{Block, LogEntry, MultiCallError, Reduce, ReducedResult};
     use crate::test_fixtures::arb::{
-        arb_block, arb_evm_rpc_error, arb_fee_history, arb_gas_used_ratio, arb_log_entry,
-        arb_nat_256, arb_transaction_receipt,
+        arb_block, arb_evm_rpc_error, arb_log_entry, arb_nat_256, arb_transaction_receipt,
     };
     use assert_matches::assert_matches;
     use candid::Nat;
     use evm_rpc_client::types::candid::{
         Block as EvmBlock, EthMainnetService as EvmEthMainnetService, EthSepoliaService,
-        FeeHistory as EvmFeeHistory, LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult,
-        RpcError as EvmRpcError, RpcResult as EvmRpcResult, RpcService as EvmRpcService,
-        RpcService, SendRawTransactionStatus as EvmSendRawTransactionStatus,
+        LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult, RpcError as EvmRpcError,
+        RpcResult as EvmRpcResult, RpcService as EvmRpcService, RpcService,
         TransactionReceipt as EvmTransactionReceipt,
     };
     use num_bigint::BigUint;
@@ -1271,6 +1268,4 @@ mod evm_rpc_conversion {
     fn arb_evm_rpc_transaction_count() -> impl Strategy<Value = EvmRpcResult<Nat>> {
         proptest::result::maybe_ok(arb_nat_256(), arb_evm_rpc_error())
     }
-
-
 }

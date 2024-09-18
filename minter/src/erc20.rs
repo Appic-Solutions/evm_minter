@@ -5,12 +5,9 @@
 
 use crate::eth_types::Address;
 use crate::evm_config::EvmNetwork;
-// use crate::endpoints::AddCkErc20Token;
-// use crate::lifecycle::EthereumNetwork;
-use crate::state::State;
+
 use candid::Principal;
 use minicbor::{Decode, Encode};
-use num_traits::ToPrimitive;
 use std::fmt::Display;
 use std::str::FromStr;
 

@@ -5,7 +5,6 @@ use std::{
     cell::RefCell,
     collections::{btree_map, BTreeMap, BTreeSet, HashSet},
     fmt::{Display, Formatter},
-    str::FromStr,
 };
 
 use candid::Principal;
@@ -29,7 +28,7 @@ use crate::{
     numeric::{
         BlockNumber, Erc20Value, LedgerBurnIndex, LedgerMintIndex, TransactionNonce, Wei, WeiPerGas,
     },
-    rpc_declrations::{BlockTag, FixedSizeData, TransactionReceipt, TransactionStatus},
+    rpc_declrations::{BlockTag, TransactionReceipt, TransactionStatus},
     tx::GasFeeEstimate,
 };
 use strum_macros::EnumIter;

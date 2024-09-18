@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use crate::endpoints::{RetrieveNativeStatus, Transaction, TxFinalizedStatus, WithdrawalStatus};
 use crate::evm_config::EvmNetwork;
 use crate::map::MultiKeyMap;
@@ -8,14 +11,12 @@ use crate::tx::{
     SignedEip1559TransactionRequest, SignedTransactionRequest, TransactionRequest,
 };
 use crate::{
-    checked_amount::CheckedAmountOf,
     eth_types::Address,
     numeric::{Erc20TokenAmount, Erc20Value, LedgerBurnIndex, Wei},
 };
 use candid::Principal;
 use icrc_ledger_types::icrc1::account::Account;
 use minicbor::{Decode, Encode};
-use serde::de::value;
 use std::cmp::min;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
@@ -108,7 +109,7 @@ impl fmt::Debug for NativeWithdrawalRequest {
             from_subaccount,
             created_at,
         } = self;
-        f.debug_struct("NativeWithdrawRequest")
+        f.debug_struct("NativeWithdrawalRequest")
             .field("withdrawal_amount", withdrawal_amount)
             .field("destination", destination)
             .field("ledger_burn_index", ledger_burn_index)
@@ -139,8 +140,8 @@ impl fmt::Debug for Erc20WithdrawalRequest {
             .field("erc20_contract_address", erc20_contract_address)
             .field("destination", destination)
             .field("native_ledger_burn_index", native_ledger_burn_index)
-            .field("ckerc20_ledger_id", &DebugPrincipal(erc20_ledger_id))
-            .field("ckerc20_ledger_burn_index", erc20_ledger_burn_index)
+            .field("erc20_ledger_id", &DebugPrincipal(erc20_ledger_id))
+            .field("erc20_ledger_burn_index", erc20_ledger_burn_index)
             .field("from", &DebugPrincipal(from))
             .field("from_subaccount", from_subaccount)
             .field("created_at", created_at)
@@ -475,7 +476,7 @@ impl WithdrawalTransactions {
                 .filter(|r| r.native_ledger_burn_index() == request.native_ledger_burn_index())
                 .count(),
             1,
-            "BUG: expected exactly one withdrawal request with ckETH ledger burn index {}",
+            "BUG: expected exactly one withdrawal request with Native ledger burn index {}",
             request.native_ledger_burn_index()
         );
         self.remove_withdrawal_request(&request);

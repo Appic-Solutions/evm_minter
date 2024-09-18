@@ -8,10 +8,7 @@ use super::{
 };
 // use crate::erc20::CkTokenSymbol;
 // use crate::state::transactions::{Reimbursed, ReimbursementIndex};
-use crate::{
-    erc20::ERC20TokenSymbol,
-    storage::{record_event, with_event_iter},
-};
+use crate::storage::{record_event, with_event_iter};
 
 /// Updates the state to reflect the given state transition.
 // public because it's used in tests since process_event

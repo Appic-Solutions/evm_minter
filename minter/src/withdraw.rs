@@ -29,7 +29,7 @@ const TRANSACTIONS_TO_SEND_BATCH_SIZE: usize = 5;
 // 21000 is fixed for native tokens, however 65000 is idle for ERC20s but some ERC20 contracts have
 // more complicated logic that requires maximum of 100000 Gas.
 pub const NATIVE_WITHDRAWAL_TRANSACTION_GAS_LIMIT: GasAmount = GasAmount::new(21_000);
-pub const ERC20_WITHDRAWAL_TRANSACTION_GAS_LIMIT: GasAmount = GasAmount::new(100_000);
+pub const ERC20_WITHDRAWAL_TRANSACTION_GAS_LIMIT: GasAmount = GasAmount::new(65_000);
 
 pub async fn process_reimbursement() {
     let _guard = match TimerGuard::new(TaskType::Reimbursement) {

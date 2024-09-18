@@ -1,6 +1,4 @@
-use crate::types::candid::{
-    Block, BlockTag, MultiRpcResult, ProviderError, RpcConfig, RpcError, RpcServices,
-};
+use crate::types::candid::{MultiRpcResult, ProviderError, RpcError};
 
 mod max_expected_too_few_cycles_error {
     use super::*;
