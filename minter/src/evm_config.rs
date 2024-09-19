@@ -2,14 +2,20 @@
 // use crate::lifecycle::upgrade::UpgradeArg;
 use candid::{CandidType, Deserialize};
 use minicbor::{Decode, Encode};
-use std::fmt::{Display, Formatter};
+use std::{
+    default,
+    fmt::{Display, Formatter},
+};
 
-#[derive(CandidType, Clone, Copy, Deserialize, Debug, Eq, PartialEq, Hash, Encode, Decode)]
+#[derive(
+    CandidType, Clone, Copy, Deserialize, Default, Debug, Eq, PartialEq, Hash, Encode, Decode,
+)]
 #[cbor(index_only)]
 pub enum EvmNetwork {
     #[n(1)]
     Ethereum,
     #[n(11155111)]
+    #[default]
     Sepolia,
     #[n(42161)]
     ArbitrumOne,

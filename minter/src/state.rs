@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 pub mod audit;
 pub mod event;
 pub mod transactions;
@@ -408,6 +411,72 @@ impl State {
                 chain_id: self.evm_network,
                 erc20_token_symbol: symbol.clone(),
             })
+    }
+
+    pub fn record_add_erc20_token(&mut self, erc20_token: ERC20Token) {
+        assert_eq!(
+            self.evm_network, erc20_token.chain_id,
+            "ERROR: Expected {}, but got {}",
+            self.evm_network, erc20_token.chain_id
+        );
+        let erc20_with_same_symbol = self
+            .supported_erc20_tokens()
+            .filter(|erc20| erc20.erc20_token_symbol == erc20_token.erc20_token_symbol)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            erc20_with_same_symbol,
+            vec![],
+            "ERROR: ERC20 token symbol {} is already used by {:?}",
+            erc20_token.erc20_token_symbol,
+            erc20_with_same_symbol
+        );
+        assert_eq!(
+            self.erc20_tokens.try_insert(
+                erc20_token.erc20_ledger_id,
+                erc20_token.erc20_contract_address,
+                erc20_token.erc20_token_symbol,
+            ),
+            Ok(()),
+            "ERROR: some ERC20 tokens use the same ERC20 ledger ID or ERC-20 address"
+        );
+    }
+
+    /// Checks whether two states are equivalent.
+    pub fn is_equivalent_to(&self, other: &Self) -> Result<(), String> {
+        // We define the equivalence using the upgrade procedure.
+        // Replaying the event log won't produce exactly the same state we had before the upgrade,
+        // but a state that equivalent for all practical purposes.
+        //
+        // For example, we don't compare:
+        // 1. Computed fields and caches, such as `ecdsa_public_key`.
+        // 2. Transient fields, such as `active_tasks`.
+        use ic_utils_ensure::ensure_eq;
+
+        ensure_eq!(self.evm_network, other.evm_network);
+        ensure_eq!(self.native_ledger_id, other.native_ledger_id);
+        ensure_eq!(self.ecdsa_key_name, other.ecdsa_key_name);
+        ensure_eq!(self.helper_contract_address, other.helper_contract_address);
+        ensure_eq!(
+            self.native_minimum_withdrawal_amount,
+            other.native_minimum_withdrawal_amount
+        );
+        ensure_eq!(
+            self.first_scraped_block_number,
+            other.first_scraped_block_number
+        );
+        ensure_eq!(
+            self.last_scraped_block_number,
+            other.last_scraped_block_number
+        );
+        ensure_eq!(self.block_height, other.block_height);
+        ensure_eq!(self.events_to_mint, other.events_to_mint);
+        ensure_eq!(self.minted_events, other.minted_events);
+        ensure_eq!(self.invalid_events, other.invalid_events);
+
+        ensure_eq!(self.erc20_tokens, other.erc20_tokens);
+
+        self.withdrawal_transactions
+            .is_equivalent_to(&other.withdrawal_transactions)
     }
 
     fn upgrade(&mut self, upgrade_args: UpgradeArg) -> Result<(), InvalidStateError> {

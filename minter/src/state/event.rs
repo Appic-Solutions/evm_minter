@@ -3,6 +3,7 @@ use minicbor::{Decode, Encode};
 
 use crate::{
     deposit_logs::{EventSource, ReceivedDepositEvent, ReceivedErc20Event, ReceivedNativeEvent},
+    erc20::ERC20Token,
     eth_types::Address,
     lifecycle::{InitArg, UpgradeArg},
     numeric::{BlockNumber, LedgerBurnIndex, LedgerMintIndex},
@@ -100,9 +101,9 @@ pub enum EventType {
     /// or the transaction fee associated with a ckERC20 withdrawal.
     #[n(12)]
     ReimbursedNativeWithdrawal(#[n(0)] Reimbursed),
-    // /// Add a new ckERC20 token.
-    // #[n(14)]
-    // AddedCkErc20Token(#[n(0)] CkErc20Token),
+    /// Add a new ERC20 token.
+    #[n(14)]
+    AddedErc20Token(#[n(0)] ERC20Token),
     /// The minter discovered a erc20 deposit in the helper contract logs.
     #[n(15)]
     AcceptedErc20Deposit(#[n(0)] ReceivedErc20Event),

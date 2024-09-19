@@ -6,7 +6,6 @@ use super::{
     transactions::{Reimbursed, ReimbursementIndex},
     State,
 };
-// use crate::erc20::CkTokenSymbol;
 // use crate::state::transactions::{Reimbursed, ReimbursementIndex};
 use crate::storage::{record_event, with_event_iter};
 
@@ -114,9 +113,10 @@ pub fn apply_state_transition(state: &mut State, payload: &EventType) {
         }
         EventType::SkippedBlock { block_number } => {
             state.record_skipped_block(*block_number);
-        } // EventType::AddedCkErc20Token(ckerc20_token) => {
-        //     state.record_add_ckerc20_token(ckerc20_token.clone());
-        // }
+        }
+        EventType::AddedErc20Token(erc20_token) => {
+            state.record_add_erc20_token(erc20_token.clone());
+        }
         EventType::AcceptedErc20WithdrawalRequest(request) => {
             state.record_erc20_withdrawal_request(request.clone())
         }

@@ -712,12 +712,12 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
                 EventType::SkippedBlock { block_number } => EP::SkippedBlock {
                     block_number: block_number.into(),
                 },
-                // EventType::AddedCkErc20Token(token) => EP::AddedCkErc20Token {
-                //     chain_id: token.erc20_ethereum_network.chain_id().into(),
-                //     address: token.erc20_contract_address.to_string(),
-                //     ckerc20_token_symbol: token.ckerc20_token_symbol.to_string(),
-                //     ckerc20_ledger_id: token.ckerc20_ledger_id,
-                // },
+                EventType::AddedCkErc20Token(token) => EP::AddedErc20Token {
+                    chain_id: token.erc20_ethereum_network.chain_id().into(),
+                    address: token.erc20_contract_address.to_string(),
+                    erc20_token_symbol: token.erc20_token_symbol.to_string(),
+                    erc20_ledger_id: token.erc20_ledger_id,
+                },
                 EventType::AcceptedErc20WithdrawalRequest(Erc20WithdrawalRequest {
                     max_transaction_fee,
                     withdrawal_amount,
