@@ -266,13 +266,13 @@ pub enum WithdrawalStatus {
     TxFinalized(TxFinalizedStatus),
 }
 
-// #[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
-// pub struct AddErc20Token {
-//     pub chain_id: Nat,
-//     pub address: String,
-//     pub erc20_token_symbol: String,
-//     pub erc20_ledger_id: Principal,
-// }
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
+pub struct AddErc20Token {
+    pub chain_id: Nat,
+    pub address: String,
+    pub erc20_token_symbol: String,
+    pub erc20_ledger_id: Principal,
+}
 
 pub mod events {
     use crate::lifecycle::InitArg;
@@ -425,12 +425,12 @@ pub mod events {
         SkippedBlock {
             block_number: Nat,
         },
-        // AddedCkErc20Token {
-        //     chain_id: Nat,
-        //     address: String,
-        //     ckerc20_token_symbol: String,
-        //     ckerc20_ledger_id: Principal,
-        // },
+        AddedErc20Token {
+            chain_id: Nat,
+            address: String,
+            erc20_token_symbol: String,
+            erc20_ledger_id: Principal,
+        },
         AcceptedErc20WithdrawalRequest {
             max_transaction_fee: Nat,
             withdrawal_amount: Nat,

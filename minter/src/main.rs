@@ -712,8 +712,8 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
                 EventType::SkippedBlock { block_number } => EP::SkippedBlock {
                     block_number: block_number.into(),
                 },
-                EventType::AddedCkErc20Token(token) => EP::AddedErc20Token {
-                    chain_id: token.erc20_ethereum_network.chain_id().into(),
+                EventType::AddedErc20Token(token) => EP::AddedErc20Token {
+                    chain_id: token.chain_id.chain_id().into(),
                     address: token.erc20_contract_address.to_string(),
                     erc20_token_symbol: token.erc20_token_symbol.to_string(),
                     erc20_ledger_id: token.erc20_ledger_id,

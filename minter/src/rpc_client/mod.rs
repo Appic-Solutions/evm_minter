@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+mod providers;
+
 use std::{
     clone, collections::BTreeMap, convert::Infallible, fmt::Display, ops::Deref, str::FromStr,
 };

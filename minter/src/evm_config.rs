@@ -63,8 +63,6 @@ impl TryFrom<u64> for EvmNetwork {
 impl Display for EvmNetwork {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            // EvmNetwork::Mainnet => write!(f, "Ethereum Mainnet"),
-            // EvmNetwork::Sepolia => write!(f, "Ethereum Testnet Sepolia"),
             EvmNetwork::Ethereum => write!(f, "Ethereum mainnet"),
             EvmNetwork::Sepolia => write!(f, "Sepolia Testnet"),
             EvmNetwork::ArbitrumOne => write!(f, "Arbitrum one mainnet"),
