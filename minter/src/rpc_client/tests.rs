@@ -1,45 +1,68 @@
-// use crate::eth_rpc_client::providers::{EthereumProvider, RpcNodeProvider};
+mod providers {
+    use evm_rpc_client::types::candid::{RpcApi, RpcServices};
+    use strum::IntoEnumIterator;
 
-// const BLOCK_PI: RpcNodeProvider = RpcNodeProvider::Ethereum(EthereumProvider::BlockPi);
-// const PUBLIC_NODE: RpcNodeProvider = RpcNodeProvider::Ethereum(EthereumProvider::PublicNode);
-// const alchemy_nodes: RpcNodeProvider = RpcNodeProvider::Ethereum(EthereumProvider::LlamaNodes);
+    use crate::{
+        evm_config::EvmNetwork,
+        rpc_client::providers::{get_providers, Provider},
+        storage::set_rpc_api_key,
+    };
 
-// mod providers {
-//     use crate::evm_config::EvmNetwork;
-//     // use crate::rpc_client::providers::{EthereumProvider, RpcNodeProvider, SepoliaProvider};
-//     use crate::rpc_client::RpcClient;
+    #[test]
+    fn should_generate_url_with_api_key() {
+        set_rpc_api_key(Provider::Alchemy, "Test_key_Alchemy".to_string());
 
-//     #[test]
-//     fn should_retrieve_sepolia_providers_in_stable_order() {
-//         let client = EthRpcClient::new(EthereumNetwork::Sepolia);
+        assert_eq!(
+            Provider::Alchemy.get_url_with_api_key("https://polygon-mainnet.g.alchemy.com/v2"),
+            "https://polygon-mainnet.g.alchemy.com/v2/Test_key_Alchemy".to_string()
+        );
 
-//         let providers = client.providers();
+        assert_eq!(
+            Provider::PublicNode.get_url_with_api_key("https://polygon-bor-rpc.publicnode.com"),
+            "https://polygon-bor-rpc.publicnode.com".to_string()
+        )
+    }
 
-//         assert_eq!(
-//             providers,
-//             &[
-//                 RpcNodeProvider::Sepolia(SepoliaProvider::BlockPi),
-//                 RpcNodeProvider::Sepolia(SepoliaProvider::PublicNode)
-//             ]
-//         );
-//     }
+    #[test]
+    fn should_retireve_at_least_three_prviders() {
+        for network in EvmNetwork::iter() {
+            match get_providers(network) {
+                evm_rpc_client::types::candid::RpcServices::Custom {
+                    chain_id: _,
+                    services,
+                } => {
+                    assert!(services.len() >= 3)
+                }
+                _ => (),
+            }
+        }
+    }
 
-//     #[test]
-//     fn should_retrieve_mainnet_providers_in_stable_order() {
-//         let client = EthRpcClient::new(EthereumNetwork::Mainnet);
+    #[test]
+    fn should_retrieve_polygon_providers() {
+        let polygon_providers = RpcServices::Custom {
+            chain_id: EvmNetwork::Polygon.chain_id(),
+            services: vec![
+                RpcApi {
+                    url: Provider::Alchemy
+                        .get_url_with_api_key("https://polygon-mainnet.g.alchemy.com/v2"),
+                    headers: None,
+                },
+                RpcApi {
+                    url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/polygon"),
+                    headers: None,
+                },
+                RpcApi {
+                    url: Provider::PublicNode
+                        .get_url_with_api_key("https://polygon-bor-rpc.publicnode.com"),
+                    headers: None,
+                },
+            ],
+        };
 
-//         let providers = client.providers();
-
-//         assert_eq!(
-//             providers,
-//             &[
-//                 RpcNodeProvider::Ethereum(EthereumProvider::BlockPi),
-//                 RpcNodeProvider::Ethereum(EthereumProvider::PublicNode),
-//                 RpcNodeProvider::Ethereum(EthereumProvider::LlamaNodes)
-//             ]
-//         );
-//     }
-// }
+        assert_eq!(get_providers(EvmNetwork::Polygon), polygon_providers)
+    }
+}
 
 mod multi_rpc_results {
     use evm_rpc_client::types::candid::{

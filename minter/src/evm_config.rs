@@ -2,13 +2,23 @@
 // use crate::lifecycle::upgrade::UpgradeArg;
 use candid::{CandidType, Deserialize};
 use minicbor::{Decode, Encode};
-use std::{
-    default,
-    fmt::{Display, Formatter},
-};
+use std::fmt::{Display, Formatter};
+use strum::EnumIter;
+use strum::IntoEnumIterator;
 
 #[derive(
-    CandidType, Clone, Copy, Deserialize, Default, Debug, Eq, PartialEq, Hash, Encode, Decode,
+    CandidType,
+    Clone,
+    Copy,
+    Deserialize,
+    Default,
+    Debug,
+    Eq,
+    PartialEq,
+    Hash,
+    Encode,
+    Decode,
+    EnumIter,
 )]
 #[cbor(index_only)]
 pub enum EvmNetwork {
@@ -27,6 +37,10 @@ pub enum EvmNetwork {
     Optimism,
     #[n(8453)]
     Base,
+    #[n(43114)]
+    Avalanche,
+    #[n(250)]
+    Fantom,
 }
 
 impl EvmNetwork {
@@ -39,6 +53,8 @@ impl EvmNetwork {
             EvmNetwork::Polygon => 137,
             EvmNetwork::Optimism => 10,
             EvmNetwork::Base => 8453,
+            EvmNetwork::Avalanche => 43114,
+            EvmNetwork::Fantom => 250,
         }
     }
 }
@@ -55,6 +71,8 @@ impl TryFrom<u64> for EvmNetwork {
             137 => Ok(EvmNetwork::Polygon),
             10 => Ok(EvmNetwork::Optimism),
             8453 => Ok(EvmNetwork::Base),
+            43114 => Ok(EvmNetwork::Avalanche),
+            250 => Ok(EvmNetwork::Fantom),
             _ => Err("Unknown EVM chain id Network".to_string()),
         }
     }
@@ -70,6 +88,8 @@ impl Display for EvmNetwork {
             EvmNetwork::Polygon => write!(f, "Polygon mainnet"),
             EvmNetwork::Optimism => write!(f, "Optimism mainnet"),
             EvmNetwork::Base => write!(f, "Base mainnet"),
+            EvmNetwork::Avalanche => write!(f, "Avalanche mainnet"),
+            EvmNetwork::Fantom => write!(f, "Fantom mainnet"),
         }
     }
 }

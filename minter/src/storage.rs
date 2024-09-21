@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod tests;
 
+use crate::rpc_client::providers::Provider;
 use crate::state::event::{Event, EventType};
 use ic_stable_structures::{
     log::Log as StableLog,
     memory_manager::{MemoryId, MemoryManager, VirtualMemory},
     storable::{Bound, Storable},
-    DefaultMemoryImpl, StableCell,
+    DefaultMemoryImpl, StableBTreeMap,
 };
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -16,7 +17,7 @@ const LOG_DATA_MEMORY_ID: MemoryId = MemoryId::new(1);
 
 type VMem = VirtualMemory<DefaultMemoryImpl>;
 type EventLog = StableLog<Event, VMem, VMem>;
-type RpcApiKey = StableCell<String, VMem>;
+type RpcApiKey = StableBTreeMap<Provider, String, VMem>;
 
 impl Storable for Event {
     fn to_bytes(&self) -> Cow<[u8]> {
@@ -31,6 +32,21 @@ impl Storable for Event {
     }
 
     const BOUND: Bound = Bound::Unbounded;
+}
+
+impl Storable for Provider {
+    const BOUND: Bound = Bound::Unbounded;
+
+    fn to_bytes(&self) -> Cow<[u8]> {
+        let mut buf = vec![];
+        minicbor::encode(self, &mut buf).expect("event encoding should always succeed");
+        Cow::Owned(buf)
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        minicbor::decode(bytes.as_ref())
+            .unwrap_or_else(|e| panic!("failed to decode event bytes {}: {e}", hex::encode(bytes)))
+    }
 }
 
 thread_local! {
@@ -50,20 +66,18 @@ thread_local! {
         );
 
     // the rpc api key saved on stable storage
-    static RPC_API_KEY:RefCell<RpcApiKey>=RefCell::new(
-        StableCell::init(
-            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(2))),String::new()).expect("failed to initialize stable api key"),
+    static RPC_API_KEYS:RefCell<RpcApiKey>=RefCell::new(
+        StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(2))))
     );
 
 }
 
-pub fn change_rpc_api_key(key: String) {
-    RPC_API_KEY
-        .with(|api_key| api_key.borrow_mut().set(key))
-        .expect("setting api key should succeed");
+pub fn set_rpc_api_key(rpc_provider: Provider, key: String) -> Option<String> {
+    RPC_API_KEYS.with(|rpc_api_keys| rpc_api_keys.borrow_mut().insert(rpc_provider, key))
 }
-pub fn get_rpc_api_key() -> String {
-    RPC_API_KEY.with(|api_key| api_key.borrow().get().to_string())
+pub fn get_rpc_api_key(rpc_provider: Provider) -> Option<String> {
+    RPC_API_KEYS.with(|rpc_api_keys| rpc_api_keys.borrow().get(&rpc_provider))
 }
 
 /// Appends the event to the event log.

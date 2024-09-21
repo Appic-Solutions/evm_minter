@@ -1,17 +1,15 @@
 #[cfg(test)]
 mod tests;
 
-mod providers;
-
-use std::{
-    clone, collections::BTreeMap, convert::Infallible, fmt::Display, ops::Deref, str::FromStr,
-};
+pub mod providers;
+use providers::get_providers;
+use std::{clone, collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr};
 
 use crate::{
     checked_amount::CheckedAmountOf,
     eth_types::Address,
     evm_config::EvmNetwork,
-    logs::{PrintProxySink, DEBUG, INFO, TRACE_HTTP},
+    logs::{PrintProxySink, INFO, TRACE_HTTP},
     numeric::{BlockNumber, GasAmount, LogIndex, TransactionCount, Wei, WeiPerGas},
     rpc_declrations::{
         Block, BlockSpec, BlockTag, Data, FeeHistory, FeeHistoryParams, FixedSizeData,
@@ -25,12 +23,12 @@ use ic_canister_log::log;
 
 use evm_rpc_client::{
     types::candid::{
-        Block as EvmBlock, BlockTag as EvmBlockTag, EthSepoliaService, FeeHistory as EvmFeeHistory,
+        Block as EvmBlock, BlockTag as EvmBlockTag, FeeHistory as EvmFeeHistory,
         FeeHistoryArgs as EvmFeeHistoryArgs, GetLogsArgs as EvmGetLogsArgs,
         GetTransactionCountArgs as EvmGetTransactionCountArgs, HttpOutcallError,
         LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult, RpcConfig as EvmRpcConfig,
-        RpcError as EvmRpcError, RpcResult as EvmRpcResult, RpcService as EvmRpcService,
-        RpcServices as EvmRpcServices, SendRawTransactionStatus as EvmSendRawTransactionStatus,
+        RpcError as EvmRpcError, RpcService as EvmRpcService,
+        SendRawTransactionStatus as EvmSendRawTransactionStatus,
         TransactionReceipt as EvmTransactionReceipt,
     },
     CallerService, EvmRpcClient, OverrideRpcConfig,
@@ -63,7 +61,7 @@ impl RpcClient {
         const MIN_ATTACHED_CYCLES: u128 = 300_000_000_000;
 
         // TODO: Add a function to chose custom providers based on the chainid
-        let providers = EvmRpcServices::EthSepolia(Some(vec![EthSepoliaService::Alchemy]));
+        let providers = get_providers(client.chain);
 
         client.evm_rpc_client = Some(
             EvmRpcClient::builder(CallerService {}, TRACE_HTTP)
