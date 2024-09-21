@@ -2,8 +2,7 @@ use std::fmt::format;
 
 use crate::evm_config::EvmNetwork;
 use crate::storage::get_rpc_api_key;
-use evm_rpc_client::types::candid::{RpcApi, RpcService, RpcServices};
-use ic_cdk::api::management_canister::http_request::HttpHeader;
+use evm_rpc_client::types::candid::{RpcApi, RpcServices};
 use minicbor::{Decode, Encode};
 
 #[derive(Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Clone)]

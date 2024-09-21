@@ -3,7 +3,7 @@ mod tests;
 
 pub mod providers;
 use providers::get_providers;
-use std::{clone, collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr};
+use std::{collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr};
 
 use crate::{
     checked_amount::CheckedAmountOf,
@@ -60,7 +60,6 @@ impl RpcClient {
         };
         const MIN_ATTACHED_CYCLES: u128 = 300_000_000_000;
 
-        // TODO: Add a function to chose custom providers based on the chainid
         let providers = get_providers(client.chain);
 
         client.evm_rpc_client = Some(
@@ -418,19 +417,46 @@ impl<T: std::fmt::Debug + std::cmp::PartialEq + Clone> ReducedResult<T> {
     // the new reduced result will be an inconsistent multierror call type.
     pub fn reduce_with_equality(self) -> Self {
         match self.result {
-            Ok(_) => (),
-            Err(ref multi_error) => match multi_error {
-                MultiCallError::InconsistentResults(inconsistent_result) => {
-                    log!(
-                        INFO,
-                        "[reduce_with_equality]: inconsistent results {inconsistent_result:?}"
-                    );
-                    ()
+            Ok(_) => self.clone(),
+            Err(multi_error) => match multi_error.clone().at_least_two_ok() {
+                Ok(inconsistent_result) => {
+                    if let Some((_base_provider, base_result)) =
+                        inconsistent_result.clone().into_iter().next()
+                    {
+                        let mut looped_inconsistent_results: Vec<T> = Vec::new();
+                        for (_other_provider, other_result) in inconsistent_result.into_iter() {
+                            if base_result != other_result {
+                                looped_inconsistent_results.push(other_result)
+                            }
+                        }
+
+                        match looped_inconsistent_results.len() {
+                            0 => ReducedResult {
+                                result: Ok(base_result),
+                            },
+                            _ => {
+                                log!(
+                                    INFO,
+                                    "[reduce_with_equality]: inconsistent results {multi_error:?}"
+                                );
+                                ReducedResult {
+                                    result: Err(multi_error),
+                                }
+                            }
+                        }
+                    } else {
+                        log!(
+                            INFO,
+                            "[reduce_with_equality]: inconsistent results {multi_error:?}"
+                        );
+                        ReducedResult {
+                            result: Err(multi_error),
+                        }
+                    }
                 }
-                _ => (),
+                Err(error) => ReducedResult { result: Err(error) },
             },
-        };
-        self
+        }
     }
 
     // If Inconsistent, Aggregates results from multiple RPC node providers into a single result based on a strict majority rule.

@@ -171,6 +171,83 @@ mod multi_rpc_results {
 
             assert_eq!(reduced_with_strategy.result, Ok("0x01".to_string()));
         }
+
+        #[test]
+        fn should_be_consistent_if_only_one_http_error_and_two_consistent_ok() {
+            let results = vec![
+                (
+                    EvmRpcService::EthSepolia(EthSepoliaService::Ankr),
+                    Err(EvmRpcError::HttpOutcallError(HttpOutcallError::IcError {
+                        code: RejectionCode::CanisterReject,
+                        message: "reject".to_string(),
+                    })),
+                ),
+                (
+                    EvmRpcService::EthSepolia(EthSepoliaService::Alchemy),
+                    Ok("world".to_string()),
+                ),
+                (
+                    EvmRpcService::EthSepolia(EthSepoliaService::PublicNode),
+                    Ok("world".to_string()),
+                ),
+            ];
+
+            let reduced_results: ReducedResult<String> =
+                ReducedResult::from_multi_result(EvmMultiRpcResult::Inconsistent(results));
+
+            let reduced_with_strategy = reduced_results.reduce_with_equality();
+
+            assert_eq!(reduced_with_strategy.result, Ok("world".to_string()))
+        }
+
+        #[test]
+        fn should_be_consistent_if_only_one_http_error_and_two_inconsistent_ok() {
+            let results = vec![
+                (
+                    EvmRpcService::EthSepolia(EthSepoliaService::Ankr),
+                    Err(EvmRpcError::HttpOutcallError(HttpOutcallError::IcError {
+                        code: RejectionCode::CanisterReject,
+                        message: "reject".to_string(),
+                    })),
+                ),
+                (
+                    EvmRpcService::EthSepolia(EthSepoliaService::Alchemy),
+                    Ok("world".to_string()),
+                ),
+                (
+                    EvmRpcService::EthSepolia(EthSepoliaService::PublicNode),
+                    Ok("goodbye".to_string()),
+                ),
+            ];
+
+            let reduced_results: ReducedResult<String> =
+                ReducedResult::from_multi_result(EvmMultiRpcResult::Inconsistent(results));
+
+            let reduced_with_strategy = reduced_results.reduce_with_equality();
+
+            assert_eq!(
+                reduced_with_strategy.result,
+                Err(MultiCallError::InconsistentResults(vec![
+                    (
+                        EvmRpcService::EthSepolia(EthSepoliaService::Ankr),
+                        Err(SingleCallError::HttpOutcallError(
+                            HttpOutcallError::IcError {
+                                code: RejectionCode::CanisterReject,
+                                message: "reject".to_string(),
+                            }
+                        )),
+                    ),
+                    (
+                        EvmRpcService::EthSepolia(EthSepoliaService::Alchemy),
+                        Ok("world".to_string()),
+                    ),
+                    (
+                        EvmRpcService::EthSepolia(EthSepoliaService::PublicNode),
+                        Ok("goodbye".to_string()),
+                    ),
+                ]))
+            )
+        }
     }
 
     mod reduce_with_min_by_key {
