@@ -1,4 +1,5 @@
 use candid::Principal;
+use minicbor;
 use minicbor::decode::{Decoder, Error};
 use minicbor::encode::{Encoder, Write};
 

@@ -1,20 +1,17 @@
 use candid::Nat;
 use evm_minter::address::{validate_address_as_destination, AddressValidationError};
 use evm_minter::deposit::scrape_logs;
-use evm_minter::deposit_logs::{
-    EventSource, ReceivedDepositEvent, ReceivedErc20Event, ReceivedNativeEvent,
-};
+use evm_minter::deposit_logs::{EventSource, ReceivedErc20Event, ReceivedNativeEvent};
+use evm_minter::endpoints;
 use evm_minter::endpoints::events::{
     Event as CandidEvent, EventSource as CandidEventSource, GetEventsArg, GetEventsResult,
 };
 use evm_minter::endpoints::{
-    Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, Erc20Token, GasFeeEstimate,
-    MinterInfo, RetrieveNativeRequest, RetrieveNativeStatus, WithdrawalArg, WithdrawalDetail,
-    WithdrawalError, WithdrawalSearchParameter,
+    Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, GasFeeEstimate, MinterInfo,
+    RetrieveNativeRequest, RetrieveNativeStatus, WithdrawalArg, WithdrawalDetail, WithdrawalError,
+    WithdrawalSearchParameter,
 };
 use evm_minter::endpoints::{RetrieveErc20Request, WithdrawErc20Arg, WithdrawErc20Error};
-use evm_minter::erc20::{ERC20Token, ERC20TokenSymbol};
-use evm_minter::eth_types::Address;
 use evm_minter::guard::retrieve_withdraw_guard;
 use evm_minter::ledger_client::{LedgerBurnError, LedgerClient};
 use evm_minter::lifecycle::MinterArg;
@@ -34,7 +31,6 @@ use evm_minter::withdraw::{
     process_reimbursement, process_retrieve_tokens_requests,
     ERC20_WITHDRAWAL_TRANSACTION_GAS_LIMIT, NATIVE_WITHDRAWAL_TRANSACTION_GAS_LIMIT,
 };
-use evm_minter::{endpoints, erc20};
 use evm_minter::{
     state, storage, PROCESS_REIMBURSEMENT, PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_INTERVAL,
     SCRAPING_DEPOSIT_LOGS_INTERVAL,
@@ -44,10 +40,7 @@ use ic_canister_log::log;
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
-use std::str::FromStr;
 use std::time::Duration;
-
-// mod dashboard;
 
 fn validate_caller_not_anonymous() -> candid::Principal {
     let principal = ic_cdk::caller();
@@ -815,7 +808,7 @@ pub fn heap_memory_size_bytes() -> usize {
 
 fn main() {}
 
-// Checks the real candid interface against the one declared in the did file
+// // Checks the real candid interface against the one declared in the did file
 // #[test]
 // fn check_candid_interface_compatibility() {
 //     fn source_to_str(source: &candid_parser::utils::CandidSource) -> String {
@@ -857,7 +850,7 @@ fn main() {}
 
 //     // check the public interface against the actual one
 //     let old_interface = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap())
-//         .join("cketh_minter.did");
+//         .join("evm_minter.did");
 
 //     check_service_equal(
 //         "actual ledger candid interface",
@@ -866,3 +859,6 @@ fn main() {}
 //         candid_parser::utils::CandidSource::File(old_interface.as_path()),
 //     );
 // }
+
+// Enable Candid export
+ic_cdk::export_candid!();

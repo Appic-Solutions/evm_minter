@@ -4,11 +4,12 @@ use crate::eth_types::Address;
 use crate::numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas};
 use evm_rpc_client::types::candid::SendRawTransactionStatus as EvmSendRawTransactionStatus;
 use minicbor::{Decode, Encode};
+use serde;
 use serde::{Deserialize, Serialize};
+use serde_json;
 use serde_json::Value;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
-
 pub type Quantity = ethnum::u256;
 
 pub fn into_nat(quantity: Quantity) -> candid::Nat {

@@ -4,7 +4,6 @@ use candid::{CandidType, Deserialize};
 use minicbor::{Decode, Encode};
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
-use strum::IntoEnumIterator;
 
 #[derive(
     CandidType,

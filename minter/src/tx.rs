@@ -1,5 +1,6 @@
 use ethnum::u256;
 use ic_canister_log::log;
+use minicbor;
 use minicbor::{Decode, Encode};
 use rlp::RlpStream;
 

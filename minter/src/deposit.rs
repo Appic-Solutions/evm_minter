@@ -1,4 +1,5 @@
 use std::cmp::{min, Ordering};
+use std::time::Duration;
 
 use ic_canister_log::log;
 use scopeguard::ScopeGuard;
@@ -125,7 +126,7 @@ async fn mint() {
             INFO,
             "Failed to mint {error_count} events, rescheduling the minting"
         );
-        // ic_cdk_timers::set_timer(crate::MINT_RETRY_DELAY, || ic_cdk::spawn(mint()));
+        ic_cdk_timers::set_timer(crate::MINT_RETRY_DELAY, || ic_cdk::spawn(mint()));
     }
 }
 
@@ -215,7 +216,7 @@ where
             }
             if read_state(State::has_events_to_mint) {
                 // TODO: Mint function
-                // ic_cdk_timers::set_timer(Duration::from_secs(0), || ic_cdk::spawn(mint()));
+                ic_cdk_timers::set_timer(Duration::from_secs(0), || ic_cdk::spawn(mint()));
             }
             for error in errors {
                 if let ReceivedDepsitEventError::InvalidEventSource { source, error } = &error {

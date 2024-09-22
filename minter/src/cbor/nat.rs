@@ -1,4 +1,5 @@
 use candid::Nat;
+use minicbor;
 use minicbor::data::Tag;
 use minicbor::decode::{Decoder, Error};
 use minicbor::encode::{Encoder, Write};

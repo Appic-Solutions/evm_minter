@@ -1,7 +1,7 @@
 use ic_canister_log::{declare_log_buffer, export as export_logs, GlobalBuffer, Sink};
 use serde::Deserialize;
+use serde_json;
 use std::str::FromStr;
-
 // High-priority messages.
 declare_log_buffer!(name = INFO_BUF, capacity = 1000);
 

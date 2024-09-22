@@ -1,6 +1,8 @@
+use minicbor;
 use minicbor::decode::{Decoder, Error};
 use minicbor::encode::{Encoder, Write};
 use minicbor::{Decode, Encode};
+
 use phantom_newtype::Id;
 
 pub fn decode<'b, Ctx, Repr, Tag>(

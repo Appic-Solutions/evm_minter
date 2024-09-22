@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests;
-
 use crate::rpc_client::providers::Provider;
 use crate::state::event::{Event, EventType};
 use ic_stable_structures::{
@@ -9,6 +8,7 @@ use ic_stable_structures::{
     storable::{Bound, Storable},
     DefaultMemoryImpl, StableBTreeMap,
 };
+use minicbor;
 use std::borrow::Cow;
 use std::cell::RefCell;
 

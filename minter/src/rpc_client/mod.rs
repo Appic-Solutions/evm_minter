@@ -36,7 +36,7 @@ use evm_rpc_client::{
 use num_traits::ToPrimitive;
 
 use ic_cdk::api::call::RejectionCode;
-use serde_json::error;
+
 // We expect most of the calls to contain zero events.
 const ETH_GET_LOGS_INITIAL_RESPONSE_SIZE_ESTIMATE: u64 = 100;
 
@@ -257,7 +257,7 @@ impl<T: Clone> MultiCallError<T> {
             MultiCallError::InconsistentResults(results) => {
                 results
                     .into_iter()
-                    .any(|(rpcservice, rpc_result)| match rpc_result {
+                    .any(|(_rpcservice, rpc_result)| match rpc_result {
                         Ok(_) => false,
                         Err(rpc_error) => match rpc_error {
                             SingleCallError::HttpOutcallError(error) => predicate(error),
