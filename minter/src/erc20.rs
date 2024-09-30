@@ -3,11 +3,13 @@
 // #[cfg(test)]
 // mod tests;
 
+use crate::endpoints::AddErc20Token;
 use crate::eth_types::Address;
 use crate::evm_config::EvmNetwork;
 
 use candid::Principal;
 use minicbor::{Decode, Encode};
+use num_traits::ToPrimitive;
 use std::fmt::Display;
 use std::str::FromStr;
 
@@ -59,24 +61,24 @@ impl FromStr for ERC20TokenSymbol {
     }
 }
 
-// impl TryFrom<AddCkErc20Token> for CkErc20Token {
-//     type Error = String;
+impl TryFrom<AddErc20Token> for ERC20Token {
+    type Error = String;
 
-//     fn try_from(value: AddCkErc20Token) -> Result<Self, Self::Error> {
-//         let erc20_ethereum_network = EthereumNetwork::try_from(
-//             value
-//                 .chain_id
-//                 .0
-//                 .to_u64()
-//                 .ok_or("ERROR: chain_id does not fit in a u64")?,
-//         )?;
-//         let erc20_contract_address =
-//             Address::from_str(&value.address).map_err(|e| format!("ERROR: {}", e))?;
-//         Ok(Self {
-//             erc20_ethereum_network,
-//             erc20_contract_address,
-//             ckerc20_token_symbol: value.ckerc20_token_symbol.parse()?,
-//             ckerc20_ledger_id: value.ckerc20_ledger_id,
-//         })
-//     }
-// }
+    fn try_from(value: AddErc20Token) -> Result<Self, Self::Error> {
+        let erc20_ethereum_network = EvmNetwork::try_from(
+            value
+                .chain_id
+                .0
+                .to_u64()
+                .ok_or("ERROR: chain_id does not fit in a u64")?,
+        )?;
+        let erc20_contract_address =
+            Address::from_str(&value.address).map_err(|e| format!("ERROR: {}", e))?;
+        Ok(Self {
+            chain_id: erc20_ethereum_network,
+            erc20_contract_address,
+            erc20_token_symbol: value.erc20_token_symbol.parse()?,
+            erc20_ledger_id: value.erc20_ledger_id,
+        })
+    }
+}

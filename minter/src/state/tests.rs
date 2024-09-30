@@ -1007,6 +1007,7 @@ fn state_equivalence() {
         native_symbol: ERC20TokenSymbol::new("icSepoliaETH".to_string()),
         native_ledger_transfer_fee: Wei::new(2_000_000_000_000_000),
         min_max_priority_fee_per_gas: WeiPerGas::new(1000),
+        ledger_suite_manager_id: None,
     };
 
     assert_eq!(

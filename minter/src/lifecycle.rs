@@ -115,6 +115,7 @@ impl TryFrom<InitArg> for State {
             skipped_blocks: Default::default(),
             active_tasks: Default::default(),
             last_transaction_price_estimate: None,
+            ledger_suite_manager_id: None,
             erc20_tokens: Default::default(),
             erc20_balances: Default::default(),
             evm_canister_id: Principal::from_slice(&[0_u8, 0, 0, 0, 2, 48, 0, 204, 1, 1]),

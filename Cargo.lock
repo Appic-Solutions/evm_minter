@@ -723,6 +723,7 @@ dependencies = [
  "ic-crypto-secp256k1",
  "ic-crypto-sha3",
  "ic-crypto-test-utils-reproducible-rng",
+ "ic-ethereum-types",
  "ic-management-canister-types",
  "ic-stable-structures",
  "ic-utils-ensure",
@@ -999,7 +1000,7 @@ dependencies = [
 [[package]]
 name = "ic-base-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "byte-unit",
  "bytes",
@@ -1029,7 +1030,7 @@ dependencies = [
 [[package]]
 name = "ic-btc-replica-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "candid",
  "ic-btc-interface",
@@ -1129,7 +1130,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-sha2"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "sha2",
 ]
@@ -1137,7 +1138,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-secp256k1"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "hmac",
  "k256",
@@ -1153,7 +1154,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-sha2"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "ic-crypto-internal-sha2",
 ]
@@ -1161,7 +1162,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-sha3"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "sha3",
 ]
@@ -1169,7 +1170,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-test-utils-reproducible-rng"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "rand",
  "rand_chacha",
@@ -1178,7 +1179,7 @@ dependencies = [
 [[package]]
 name = "ic-error-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "ic-protobuf",
  "ic-utils",
@@ -1188,9 +1189,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-ethereum-types"
+version = "0.9.0"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
+dependencies = [
+ "hex",
+ "ic-crypto-sha3",
+ "minicbor",
+ "minicbor-derive",
+ "serde",
+]
+
+[[package]]
 name = "ic-management-canister-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "candid",
  "ic-base-types",
@@ -1210,7 +1223,7 @@ dependencies = [
 [[package]]
 name = "ic-protobuf"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "bincode",
  "candid",
@@ -1233,7 +1246,7 @@ dependencies = [
 [[package]]
 name = "ic-utils"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "hex",
  "scoped_threadpool",
@@ -1244,7 +1257,7 @@ dependencies = [
 [[package]]
 name = "ic-utils-ensure"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 
 [[package]]
 name = "ic0"
@@ -1268,7 +1281,7 @@ dependencies = [
 [[package]]
 name = "icrc-ledger-client"
 version = "0.1.2"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "async-trait",
  "candid",
@@ -1279,7 +1292,7 @@ dependencies = [
 [[package]]
 name = "icrc-ledger-client-cdk"
 version = "0.1.2"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "async-trait",
  "candid",
@@ -1290,7 +1303,7 @@ dependencies = [
 [[package]]
 name = "icrc-ledger-types"
 version = "0.1.6"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "base32",
  "candid",
@@ -1729,7 +1742,7 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 [[package]]
 name = "phantom_newtype"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#714c85c6a4245fb5b39e76f5c8003e6d90e49c4d"
+source = "git+https://github.com/dfinity/ic.git#e4defe6dfd216c8542c19b52be7cb69f033f6cab"
 dependencies = [
  "candid",
  "num-traits",

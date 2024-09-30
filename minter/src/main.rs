@@ -2,16 +2,17 @@ use candid::Nat;
 use evm_minter::address::{validate_address_as_destination, AddressValidationError};
 use evm_minter::deposit::scrape_logs;
 use evm_minter::deposit_logs::{EventSource, ReceivedErc20Event, ReceivedNativeEvent};
-use evm_minter::endpoints;
 use evm_minter::endpoints::events::{
     Event as CandidEvent, EventSource as CandidEventSource, GetEventsArg, GetEventsResult,
 };
+use evm_minter::endpoints::{self, AddErc20Token};
 use evm_minter::endpoints::{
     Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, GasFeeEstimate, MinterInfo,
     RetrieveNativeRequest, RetrieveNativeStatus, WithdrawalArg, WithdrawalDetail, WithdrawalError,
     WithdrawalSearchParameter,
 };
 use evm_minter::endpoints::{RetrieveErc20Request, WithdrawErc20Arg, WithdrawErc20Error};
+use evm_minter::erc20::ERC20Token;
 use evm_minter::guard::retrieve_withdraw_guard;
 use evm_minter::ledger_client::{LedgerBurnError, LedgerClient};
 use evm_minter::lifecycle::MinterArg;
@@ -469,20 +470,20 @@ async fn estimate_erc20_transaction_fee() -> Option<Wei> {
         })
 }
 
-// #[update]
-// async fn add_erc20_token(erc20_token: AddErc20Token) {
-//     let orchestrator_id = read_state(|s| s.ledger_suite_orchestrator_id)
-//         .unwrap_or_else(|| ic_cdk::trap("ERROR: ERC-20 feature is not activated"));
-//     if orchestrator_id != ic_cdk::caller() {
-//         ic_cdk::trap(&format!(
-//             "ERROR: only the orchestrator {} can add ERC-20 tokens",
-//             orchestrator_id
-//         ));
-//     }
-//     let erc20_token = erc20::Erc20Token::try_from(erc20_token)
-//         .unwrap_or_else(|e| ic_cdk::trap(&format!("ERROR: {}", e)));
-//     mutate_state(|s| process_event(s, EventType::AddedErc20Token(erc20_token)));
-// }
+#[update]
+async fn add_erc20_token(erc20_token: AddErc20Token) {
+    let orchestrator_id = read_state(|s| s.ledger_suite_manager_id)
+        .unwrap_or_else(|| ic_cdk::trap("ERROR: ERC-20 feature is not activated"));
+    if orchestrator_id != ic_cdk::caller() {
+        ic_cdk::trap(&format!(
+            "ERROR: only the orchestrator {} can add ERC-20 tokens",
+            orchestrator_id
+        ));
+    }
+    let erc20_token = ERC20Token::try_from(erc20_token)
+        .unwrap_or_else(|e| ic_cdk::trap(&format!("ERROR: {}", e)));
+    mutate_state(|s| process_event(s, EventType::AddedErc20Token(erc20_token)));
+}
 
 #[update]
 async fn get_canister_status() -> ic_cdk::api::management_canister::main::CanisterStatusResponse {

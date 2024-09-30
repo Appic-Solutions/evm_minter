@@ -20,7 +20,7 @@ ic-crypto-secp256k1 = { git = "https://github.com/dfinity/ic.git" }
 ic-utils-ensure = { git = "https://github.com/dfinity/ic.git" }
 icrc-ledger-client-cdk = { git = "https://github.com/dfinity/ic.git" }
 icrc-ledger-types={ git = "https://github.com/dfinity/ic.git"}
-
+ic-ethereum-types = { git = "https://github.com/dfinity/ic.git"}
 
 phantom_newtype={ git = "https://github.com/dfinity/ic.git"}
 hex = { version = "0.4.3", features = ["serde"] }

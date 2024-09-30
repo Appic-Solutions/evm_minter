@@ -145,7 +145,7 @@ pub struct State {
 
     // Canister ID of the ledger suite orchestrator that
     // can add new ERC-20 token to the minter
-    // pub ledger_suite_orchestrator_id: Option<Principal>,
+    pub ledger_suite_manager_id: Option<Principal>,
     /// ERC-20 tokens that the minter can mint:
     /// - primary key: ledger ID for the ERC20 token
     /// - secondary key: ERC-20 contract address on Ethereum
