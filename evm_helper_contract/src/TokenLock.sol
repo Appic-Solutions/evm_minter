@@ -26,7 +26,7 @@ contract TokenLock is Ownable, AccessControl {
         address user,
         address indexed token,
         uint256 indexed amount,
-        bytes indexed principalId
+        bytes32 indexed principalId
     );
 
     // Event to log gas fees added
@@ -70,7 +70,7 @@ contract TokenLock is Ownable, AccessControl {
     function deposit(
         address token,
         uint256 amount,
-        bytes memory principalId
+        bytes32 memory principalId
     ) external payable {
         if (msg.value > 0) {
             tokenAmount[address(0)] += msg.value;

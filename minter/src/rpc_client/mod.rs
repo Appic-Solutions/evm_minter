@@ -607,6 +607,14 @@ impl Reduce for EvmMultiRpcResult<EvmBlock> {
     }
 }
 
+impl Reduce for EvmMultiRpcResult<Block> {
+    type Item = Block;
+
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        ReducedResult::from_multi_result(self).reduce_with_equality()
+    }
+}
+
 impl Reduce for EvmMultiRpcResult<Vec<EvmLogEntry>> {
     type Item = Vec<LogEntry>;
 
@@ -646,6 +654,15 @@ impl Reduce for EvmMultiRpcResult<Vec<EvmLogEntry>> {
     }
 }
 
+impl Reduce for EvmMultiRpcResult<Vec<LogEntry>> {
+    type Item = Vec<LogEntry>;
+
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        let mapped_logs = ReducedResult::from_multi_result(self).reduce_with_equality();
+        mapped_logs
+    }
+}
+
 impl Reduce for EvmMultiRpcResult<Option<EvmTransactionReceipt>> {
     type Item = Option<TransactionReceipt>;
 
@@ -676,6 +693,16 @@ impl Reduce for EvmMultiRpcResult<Option<EvmTransactionReceipt>> {
         let mapped_transaction_receipt = ReducedResult::from_multi_result(self)
             .reduce_with_equality()
             .map_reduce(&map_transaction_receipt);
+        mapped_transaction_receipt
+    }
+}
+
+impl Reduce for EvmMultiRpcResult<Option<TransactionReceipt>> {
+    type Item = Option<TransactionReceipt>;
+
+    fn reduce(self) -> ReducedResult<Self::Item> {
+        let mapped_transaction_receipt =
+            ReducedResult::from_multi_result(self).reduce_with_equality();
         mapped_transaction_receipt
     }
 }

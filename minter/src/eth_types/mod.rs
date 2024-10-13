@@ -14,8 +14,11 @@ pub mod serde_data;
 )]
 #[serde(transparent)]
 #[cbor(transparent)]
-pub struct Address(#[cbor(n(0), with = "minicbor::bytes")] [u8; 20]);
-
+pub struct Address(
+    #[serde(with = "serde_data")]
+    #[cbor(n(0), with = "minicbor::bytes")]
+    [u8; 20],
+);
 impl AsRef<[u8]> for Address {
     fn as_ref(&self) -> &[u8] {
         &self.0

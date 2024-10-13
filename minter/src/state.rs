@@ -43,7 +43,7 @@ thread_local! {
 }
 
 pub(crate) const RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC: [u8; 32] =
-    hex!("d04bc46dc93f065e7320e2cdc9c8ea8e1acaf085995e9f777cf770a2ee71e655");
+    hex!("6dd1eff0ef0ff202064f7b6fff66acae255359560958147fd57258b526be601f");
 
 pub const MAIN_DERIVATION_PATH: Vec<ByteBuf> = vec![];
 

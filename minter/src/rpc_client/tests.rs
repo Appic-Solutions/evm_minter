@@ -967,6 +967,7 @@ mod evm_rpc_conversion {
         M: Clone + Debug + PartialEq + serde::Serialize,
         E: Clone + Debug,
         EvmMultiRpcResult<E>: Reduce<Item = M>,
+        EvmMultiRpcResult<M>: Reduce<Item = M>,
     {
         let (ankr_evm_rpc_provider, public_node_evm_rpc_provider, alchemy_nodes_evm_rpc_provider) =
             evm_rpc_providers();
@@ -974,7 +975,7 @@ mod evm_rpc_conversion {
         // 0 error
         let evm_result = EvmMultiRpcResult::Consistent(Ok(evm_rpc_ok.clone())).reduce();
         let minter_result: ReducedResult<M> =
-            ReducedResult::from_multi_result(EvmMultiRpcResult::Consistent(Ok(minter_ok.clone())));
+            EvmMultiRpcResult::Consistent(Ok(minter_ok.clone())).reduce();
         prop_assert_eq!(evm_result.result, minter_result.result);
 
         // 1 error
@@ -999,8 +1000,7 @@ mod evm_rpc_conversion {
                 ),
             ];
             minter_results.get_mut(first_error_index).unwrap().1 = Err(first_error.clone());
-            let minter_result =
-                ReducedResult::from_multi_result(EvmMultiRpcResult::Inconsistent(minter_results));
+            let minter_result = EvmMultiRpcResult::Inconsistent(minter_results).reduce();
 
             prop_assert_eq!(evm_result.result, minter_result.result);
         }
@@ -1034,8 +1034,7 @@ mod evm_rpc_conversion {
             ];
             minter_results.get_mut(ok_index).unwrap().1 = Ok(minter_ok.clone());
 
-            let minter_result =
-                ReducedResult::from_multi_result(EvmMultiRpcResult::Inconsistent(minter_results));
+            let minter_result = EvmMultiRpcResult::Inconsistent(minter_results).reduce();
 
             prop_assert_eq_ignoring_provider(
                 evm_result.result.clone(),
@@ -1044,7 +1043,7 @@ mod evm_rpc_conversion {
         }
 
         // 3 errors
-        let evm_result: ReducedResult<M> = EvmMultiRpcResult::Inconsistent(vec![
+        let evm_result: ReducedResult<M> = EvmMultiRpcResult::Inconsistent::<E>(vec![
             (ankr_evm_rpc_provider.clone(), Err(first_error.clone())),
             (
                 public_node_evm_rpc_provider.clone(),
@@ -1056,18 +1055,18 @@ mod evm_rpc_conversion {
             ),
         ])
         .reduce();
-        let minter_result =
-            ReducedResult::from_multi_result(EvmMultiRpcResult::Inconsistent(vec![
-                (ankr_evm_rpc_provider.clone(), Err(first_error.clone())),
-                (
-                    public_node_evm_rpc_provider.clone(),
-                    Err(second_error.clone()),
-                ),
-                (
-                    alchemy_nodes_evm_rpc_provider.clone(),
-                    Err(third_error.clone()),
-                ),
-            ]));
+        let minter_result = EvmMultiRpcResult::Inconsistent::<M>(vec![
+            (ankr_evm_rpc_provider.clone(), Err(first_error.clone())),
+            (
+                public_node_evm_rpc_provider.clone(),
+                Err(second_error.clone()),
+            ),
+            (
+                alchemy_nodes_evm_rpc_provider.clone(),
+                Err(third_error.clone()),
+            ),
+        ])
+        .reduce();
 
         prop_assert_eq_ignoring_provider(evm_result.result.clone(), minter_result.result.clone())?;
 
