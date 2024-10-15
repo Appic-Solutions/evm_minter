@@ -153,6 +153,9 @@ pub struct State {
     pub erc20_tokens: DedupMultiKeyMap<Principal, Address, ERC20TokenSymbol>,
 
     pub min_max_priority_fee_per_gas: WeiPerGas,
+
+    // Appic swapper canister_id
+    pub swap_canister_id: Option<Principal>,
 }
 
 impl State {

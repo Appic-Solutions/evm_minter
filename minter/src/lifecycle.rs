@@ -120,6 +120,7 @@ impl TryFrom<InitArg> for State {
             erc20_balances: Default::default(),
             evm_canister_id: Principal::from_slice(&[0_u8, 0, 0, 0, 2, 48, 0, 204, 1, 1]),
             min_max_priority_fee_per_gas,
+            swap_canister_id: None,
         };
         state.validate_config()?;
         Ok(state)
