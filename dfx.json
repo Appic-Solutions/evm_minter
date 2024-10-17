@@ -1,0 +1,19 @@
+{
+  "canisters": {
+    "evm_test": {
+      "candid": "evm_minter.did",
+      "package": "evm_minter",
+      "type": "custom",
+      "wasm": "target/wasm32-unknown-unknown/release/evm_minter.wasm",
+      "shrink": false
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

@@ -1,10 +1,11 @@
 use candid::{Nat, Principal};
 use evm_minter::address::{validate_address_as_destination, AddressValidationError};
-use evm_minter::deposit::scrape_logs;
+use evm_minter::deposit::{scrape_logs, update_last_observed_block_number};
 use evm_minter::deposit_logs::{EventSource, ReceivedErc20Event, ReceivedNativeEvent};
 use evm_minter::endpoints::events::{
     Event as CandidEvent, EventSource as CandidEventSource, GetEventsArg, GetEventsResult,
 };
+
 use evm_minter::endpoints::{self, AddErc20Token};
 use evm_minter::endpoints::{
     Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, GasFeeEstimate, MinterInfo,
@@ -18,7 +19,9 @@ use evm_minter::ledger_client::{LedgerBurnError, LedgerClient};
 use evm_minter::lifecycle::MinterArg;
 use evm_minter::logs::INFO;
 use evm_minter::memo::BurnMemo;
-use evm_minter::numeric::{Erc20Value, LedgerBurnIndex, Wei};
+use evm_minter::numeric::{BlockNumber, Erc20Value, LedgerBurnIndex, Wei};
+use evm_minter::rpc_client::providers::Provider;
+use evm_minter::rpc_client::RpcClient;
 use evm_minter::state::audit::{process_event, Event, EventType};
 use evm_minter::state::transactions::{
     Erc20WithdrawalRequest, NativeWithdrawalRequest, Reimbursed, ReimbursementIndex,
@@ -27,6 +30,7 @@ use evm_minter::state::transactions::{
 use evm_minter::state::{
     lazy_call_ecdsa_public_key, mutate_state, read_state, transactions, State, STATE,
 };
+use evm_minter::storage::set_rpc_api_key;
 use evm_minter::tx::lazy_refresh_gas_fee_estimate;
 use evm_minter::withdraw::{
     process_reimbursement, process_retrieve_tokens_requests,
@@ -37,7 +41,6 @@ use evm_minter::{
     SCRAPING_DEPOSIT_LOGS_INTERVAL,
 };
 use ic_canister_log::log;
-// use ic_canisters_http_types::{HttpRequest, HttpResponse, HttpResponseBuilder};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
@@ -86,6 +89,14 @@ fn init(arg: MinterArg) {
             ic_cdk::trap("cannot init canister state with upgrade args");
         }
     }
+
+    // Set api_keys for rpc providers
+    let ankr_api_key = std::env::var("Ankr_Api_Key").unwrap();
+    let alchemy_api_key = std::env::var("Alchemy_Api_Key").unwrap();
+
+    set_rpc_api_key(Provider::Ankr, ankr_api_key);
+    set_rpc_api_key(Provider::Alchemy, alchemy_api_key);
+
     setup_timers();
 }
 
