@@ -215,7 +215,6 @@ where
                 mutate_state(|s| process_event(s, event.into_deposit()));
             }
             if read_state(State::has_events_to_mint) {
-                // TODO: Mint function
                 ic_cdk_timers::set_timer(Duration::from_secs(0), || ic_cdk::spawn(mint()));
             }
             for error in errors {

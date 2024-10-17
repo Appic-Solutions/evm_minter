@@ -174,10 +174,10 @@ pub async fn process_retrieve_tokens_requests() {
     finalize_transactions_batch().await;
 
     if read_state(|s| s.withdrawal_transactions.has_pending_requests()) {
-        // ic_cdk_timers::set_timer(
-        //     crate::PROCESS_ETH_RETRIEVE_TRANSACTIONS_RETRY_INTERVAL,
-        //     || ic_cdk::spawn(process_retrieve_tokens_requests()),
-        // );
+        ic_cdk_timers::set_timer(
+            crate::PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_RETRY_INTERVAL,
+            || ic_cdk::spawn(process_retrieve_tokens_requests()),
+        );
     }
 }
 

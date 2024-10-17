@@ -732,7 +732,7 @@ impl TransactionPrice {
 /// # Returns
 /// An `Option` containing the new `GasFeeEstimate` if successful, or `None` if the refresh fails.
 pub async fn lazy_refresh_gas_fee_estimate() -> Option<GasFeeEstimate> {
-    const MAX_AGE_NS: u64 = 60_000_000_000_u64; // 60 seconds
+    const MAX_AGE_NS: u64 = 30_000_000_000_u64; // 30 seconds
 
     async fn do_refresh() -> Option<GasFeeEstimate> {
         let _guard = match TimerGuard::new(TaskType::RefreshGasFeeEstimate) {
