@@ -46,6 +46,10 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::time::Duration;
 
+// Set api_keys for rpc providers
+const ANKR_API_KEY: Option<&'static str> = option_env!("Ankr_Api_Key");
+const ALCHEMY_API_KEY: Option<&'static str> = option_env!("Alchemy_Api_Key");
+
 fn validate_caller_not_anonymous() -> candid::Principal {
     let principal = ic_cdk::caller();
     if principal == candid::Principal::anonymous() {
@@ -89,13 +93,10 @@ fn init(arg: MinterArg) {
             ic_cdk::trap("cannot init canister state with upgrade args");
         }
     }
-
-    // Set api_keys for rpc providers
-    let ankr_api_key = std::env::var("Ankr_Api_Key").unwrap();
-    let alchemy_api_key = std::env::var("Alchemy_Api_Key").unwrap();
-
-    set_rpc_api_key(Provider::Ankr, ankr_api_key);
-    set_rpc_api_key(Provider::Alchemy, alchemy_api_key);
+    let ankr_api_key = ANKR_API_KEY.unwrap();
+    let alchemy_api_key = ALCHEMY_API_KEY.unwrap();
+    set_rpc_api_key(Provider::Ankr, ankr_api_key.to_string());
+    set_rpc_api_key(Provider::Alchemy, alchemy_api_key.to_string());
 
     setup_timers();
 }
@@ -495,6 +496,15 @@ async fn add_erc20_token(erc20_token: AddErc20Token) {
         .unwrap_or_else(|e| ic_cdk::trap(&format!("ERROR: {}", e)));
     mutate_state(|s| process_event(s, EventType::AddedErc20Token(erc20_token)));
 }
+
+// #[update]
+// async fn get_deposit_logs() -> Option<Nat> {
+//     let block_number = update_last_observed_block_number().await;
+//     match block_number {
+//         Some(block) => Some(Nat::from(block)),
+//         None => None,
+//     }
+// }
 
 #[update]
 async fn get_canister_status() -> ic_cdk::api::management_canister::main::CanisterStatusResponse {
