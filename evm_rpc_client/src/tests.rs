@@ -1,9 +1,8 @@
-use crate::types::candid::{MultiRpcResult, ProviderError, RpcError};
+pub use evm_rpc_types::{MultiRpcResult, ProviderError, RpcApi, RpcError, RpcService};
 
 mod max_expected_too_few_cycles_error {
     use super::*;
     use crate::max_expected_too_few_cycles_error;
-    use crate::types::candid::{RpcApi, RpcService};
 
     #[test]
     fn should_get_max_expected_too_few_cycles_for_custom_rpc_service() {

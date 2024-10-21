@@ -1,5 +1,5 @@
 mod providers {
-    use evm_rpc_client::types::candid::{RpcApi, RpcServices};
+    use evm_rpc_types::{RpcApi, RpcServices};
     use strum::IntoEnumIterator;
 
     use crate::{
@@ -27,7 +27,7 @@ mod providers {
     fn should_retireve_at_least_three_prviders() {
         for network in EvmNetwork::iter() {
             match get_providers(network) {
-                evm_rpc_client::types::candid::RpcServices::Custom {
+                evm_rpc_types::RpcServices::Custom {
                     chain_id: _,
                     services,
                 } => {
@@ -65,7 +65,7 @@ mod providers {
 }
 
 mod multi_rpc_results {
-    use evm_rpc_client::types::candid::{
+    use evm_rpc_types::{
         EthSepoliaService, HttpOutcallError, MultiRpcResult as EvmMultiRpcResult,
         RpcError as EvmRpcError, RpcService as EvmRpcService,
     };
@@ -73,7 +73,7 @@ mod multi_rpc_results {
         use super::*;
         use crate::rpc_client::{MultiCallError, ReducedResult, SingleCallError};
 
-        use evm_rpc_client::types::candid::JsonRpcError;
+        use evm_rpc_types::JsonRpcError;
         use ic_cdk::api::call::RejectionCode;
 
         #[test]
@@ -604,7 +604,7 @@ mod multi_rpc_results {
     mod has_http_outcall_error_matching {
         use super::*;
         use crate::rpc_client::{MultiCallError, ReducedResult};
-        use evm_rpc_client::types::candid::{HttpOutcallError, JsonRpcError};
+        use evm_rpc_types::{HttpOutcallError, JsonRpcError};
         use ic_cdk::api::call::RejectionCode;
         use proptest::prelude::any;
         use proptest::proptest;
@@ -771,19 +771,23 @@ mod evm_rpc_conversion {
         only_inconsistent_ok_results_without_providers, TransactionReceipt,
     };
     use crate::rpc_client::{Block, LogEntry, MultiCallError, Reduce, ReducedResult};
+    use crate::rpc_declrations::{FeeHistory, TransactionStatus};
     use crate::test_fixtures::arb::{
-        arb_block, arb_evm_rpc_error, arb_log_entry, arb_nat_256, arb_transaction_receipt,
+        arb_address, arb_block, arb_checked_amount_of, arb_data, arb_evm_rpc_error,
+        arb_fee_history, arb_hex, arb_hex20, arb_hex256, arb_hex32, arb_hex_byte, arb_log_entry,
+        arb_nat_256, arb_transaction_receipt,
     };
-    use assert_matches::assert_matches;
-    use candid::Nat;
-    use evm_rpc_client::types::candid::{
+
+    use evm_rpc_types::{
         Block as EvmBlock, EthMainnetService as EvmEthMainnetService, EthSepoliaService,
-        LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult, RpcError as EvmRpcError,
+        FeeHistory as EvmFeeHistory, Hex, Hex20, Hex32, LogEntry as EvmLogEntry,
+        MultiRpcResult as EvmMultiRpcResult, Nat256, RpcError as EvmRpcError,
         RpcResult as EvmRpcResult, RpcService as EvmRpcService, RpcService,
+        SendRawTransactionStatus as EvmSendRawTransactionStatus,
         TransactionReceipt as EvmTransactionReceipt,
     };
-    use num_bigint::BigUint;
     use proptest::collection::vec;
+    use proptest::option;
     use proptest::{prelude::Strategy, prop_assert_eq, proptest};
     use std::collections::BTreeSet;
     use std::fmt::Debug;
@@ -799,7 +803,7 @@ mod evm_rpc_conversion {
             reduced_block,
             Ok(Block {
                 number: BlockNumber::try_from(block.number).unwrap(),
-                base_fee_per_gas: Wei::try_from(block.base_fee_per_gas).unwrap(),
+                base_fee_per_gas: Wei::try_from(block.base_fee_per_gas.unwrap()).unwrap(),
             })
         );
     }
@@ -808,7 +812,10 @@ mod evm_rpc_conversion {
     fn should_map_inconsistent_results() {
         let block = evm_rpc_block();
         let next_block = EvmBlock {
-            number: block.number.clone() + 1_u8,
+            number: BlockNumber::from(block.number.clone())
+                .checked_increment()
+                .unwrap()
+                .into(),
             ..evm_rpc_block()
         };
 
@@ -832,46 +839,19 @@ mod evm_rpc_conversion {
                     EvmRpcService::EthMainnet(EvmEthMainnetService::Alchemy),
                     Ok(Block {
                         number: BlockNumber::try_from(block.number).unwrap(),
-                        base_fee_per_gas: Wei::try_from(block.base_fee_per_gas).unwrap(),
+                        base_fee_per_gas: Wei::try_from(block.base_fee_per_gas.unwrap()).unwrap(),
                     }),
                 ),
                 (
                     EvmRpcService::EthMainnet(EvmEthMainnetService::Ankr),
                     Ok(Block {
                         number: BlockNumber::try_from(next_block.number).unwrap(),
-                        base_fee_per_gas: Wei::try_from(next_block.base_fee_per_gas).unwrap(),
+                        base_fee_per_gas: Wei::try_from(next_block.base_fee_per_gas.unwrap())
+                            .unwrap(),
                     }),
                 ),
             ]))
         );
-    }
-
-    #[test]
-    fn should_fail_on_invalid_u256_nat() {
-        const U256_MAX: &[u8; 64] =
-            b"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
-        let u256_max_plus_one: Nat =
-            Nat(BigUint::parse_bytes(U256_MAX, 16).expect("Failed to parse u256 max"))
-                + Nat::from(1_u8);
-
-        for invalid_block in vec![
-            EvmBlock {
-                number: u256_max_plus_one.clone(),
-                ..evm_rpc_block()
-            },
-            EvmBlock {
-                base_fee_per_gas: u256_max_plus_one.clone(),
-                ..evm_rpc_block()
-            },
-        ] {
-            let evm_result = EvmMultiRpcResult::Consistent(Ok(invalid_block));
-            let reduced_block: Result<_, _> = evm_result.reduce().into();
-
-            assert_matches!(
-                reduced_block,
-                Err(MultiCallError::ConsistentEvmRpcCanisterError(s)) if s.contains("Nat does not fit in a U256")
-            );
-        }
     }
 
     proptest! {
@@ -1138,7 +1118,6 @@ mod evm_rpc_conversion {
             alchemy_evm_rpc_provider,
         )
     }
-
     pub fn minter_and_evm_rpc_blocks() -> impl Strategy<Value = (Block, EvmBlock)> {
         use proptest::prelude::Just;
         arb_block().prop_flat_map(|minter_block| {
@@ -1150,22 +1129,28 @@ mod evm_rpc_conversion {
         use proptest::{array, collection::vec};
         //prop_map is limited to tuples of at most 11 elements, so we group the Nat and String fields
         (
-            array::uniform7(arb_nat_256()),
-            array::uniform9(".*"),
-            vec(".*", 0..10),
-            proptest::option::of(".*"),
-            vec(".*", 0..10),
+            array::uniform2(option::of(arb_nat_256())),
+            array::uniform5(arb_nat_256()),
+            arb_hex(),
+            array::uniform6(arb_hex32()),
+            arb_hex256(),
+            arb_hex20(),
+            proptest::option::of(arb_hex32()),
+            array::uniform2(vec(arb_hex32(), 0..10)),
         )
             .prop_map(
                 move |(
-                    [difficulty, gas_limit, gas_used, nonce, size, timestamp, total_difficulty],
-                    [extra_data, hash, logs_bloom, miner, mix_hash, parent_hash, receipts_root, sha3_uncles, state_root],
-                    transactions,
+                    [difficulty, total_difficulty],
+                    [gas_limit, gas_used, nonce, size, timestamp],
+                    extra_data,
+                    [hash, mix_hash, parent_hash, receipts_root, sha3_uncles, state_root],
+                    logs_bloom,
+                    miner,
                     transactions_root,
-                    uncles,
+                    [transactions, uncles],
                 )| EvmBlock {
-                    base_fee_per_gas: Nat::from(minter_block.base_fee_per_gas),
-                    number: Nat::from(minter_block.number),
+                    base_fee_per_gas: Some(Nat256::from(minter_block.base_fee_per_gas)),
+                    number: Nat256::from(minter_block.number),
                     difficulty,
                     extra_data,
                     gas_limit,
@@ -1191,46 +1176,66 @@ mod evm_rpc_conversion {
 
     fn evm_rpc_log_entry(minter_log_entry: LogEntry) -> EvmLogEntry {
         EvmLogEntry {
-            address: minter_log_entry.address.to_string(),
+            address: Hex20::from(minter_log_entry.address.into_bytes()),
             topics: minter_log_entry
                 .topics
                 .into_iter()
-                .map(|topic| topic.to_string())
+                .map(|topic| Hex32::from(topic.0))
                 .collect(),
-            data: format!("0x{}", hex::encode(minter_log_entry.data)),
-            block_number: minter_log_entry.block_number.map(Nat::from),
+            data: Hex::from(minter_log_entry.data.0),
+            block_number: minter_log_entry.block_number.map(Nat256::from),
             transaction_hash: minter_log_entry
                 .transaction_hash
-                .map(|hash| hash.to_string()),
+                .map(|hash| Hex32::from(hash.0)),
             transaction_index: minter_log_entry
                 .transaction_index
-                .map(crate::rpc_declrations::into_nat),
-            block_hash: minter_log_entry.block_hash.map(|hash| hash.to_string()),
-            log_index: minter_log_entry.log_index.map(Nat::from),
+                .map(|q| Nat256::from_be_bytes(q.to_be_bytes())),
+            block_hash: minter_log_entry.block_hash.map(|hash| Hex32::from(hash.0)),
+            log_index: minter_log_entry.log_index.map(Nat256::from),
             removed: minter_log_entry.removed,
+        }
+    }
+
+    pub fn evm_rpc_fee_history(
+        minter_fee_history: FeeHistory,
+        gas_used_ratio: Vec<f64>,
+    ) -> EvmFeeHistory {
+        EvmFeeHistory {
+            oldest_block: minter_fee_history.oldest_block.into(),
+            base_fee_per_gas: minter_fee_history
+                .base_fee_per_gas
+                .into_iter()
+                .map(Nat256::from)
+                .collect(),
+            gas_used_ratio,
+            reward: minter_fee_history
+                .reward
+                .into_iter()
+                .map(|rewards| rewards.into_iter().map(Nat256::from).collect())
+                .collect(),
         }
     }
 
     fn evm_rpc_block() -> EvmBlock {
         EvmBlock {
-            base_fee_per_gas: 8_876_901_983_u64.into(),
+            base_fee_per_gas: Some(8_876_901_983_u64.into()),
             number: 20_061_336_u32.into(),
-            difficulty: 0_u8.into(),
-            extra_data: "0xd883010d0e846765746888676f312e32312e36856c696e7578".to_string(),
+            difficulty: Some(0_u8.into()),
+            extra_data: "0xd883010d0e846765746888676f312e32312e36856c696e7578".parse().unwrap(),
             gas_limit: 30_000_000_u32.into(),
             gas_used: 2_858_256_u32.into(),
-            hash: "0x3a68e81a96d436f421b7cae6a66f78f6aef075340edaec5c7c1db0919c0f909b".to_string(),
-            logs_bloom: "0x006000060010410010180000940006000000200040006108008801008022000900a005820000001100000300000d058962202900084080a0000031080022800000480c08100000006800000a20002028841080209044003041000940802448100002002a820085000000008400200d40204c10110810040403000210020004000a20208028104110a48429100033080e000040050501004800850042405230204230800000a0202282019080040040090a858000014014800440000208000008081804124002800030002040080610c000050002502000100005000a08002000001020500100804612440042300c0080040812000a1208420108200000000045".to_string(),
-            miner: "0xd2732e3e4c264ab330af53f661f6da91cbbb594a".to_string(),
-            mix_hash: "0x472d18a0b90d7007028dded03d7ef9923c2a7fc60f7e276bc6928fa9aeb6cbe8".to_string(),
+            hash: "0x3a68e81a96d436f421b7cae6a66f78f6aef075340edaec5c7c1db0919c0f909b".parse().unwrap(),
+            logs_bloom: "0x006000060010410010180000940006000000200040006108008801008022000900a005820000001100000300000d058962202900084080a0000031080022800000480c08100000006800000a20002028841080209044003041000940802448100002002a820085000000008400200d40204c10110810040403000210020004000a20208028104110a48429100033080e000040050501004800850042405230204230800000a0202282019080040040090a858000014014800440000208000008081804124002800030002040080610c000050002502000100005000a08002000001020500100804612440042300c0080040812000a1208420108200000000045".parse().unwrap(),
+            miner: "0xd2732e3e4c264ab330af53f661f6da91cbbb594a".parse().unwrap(),
+            mix_hash: "0x472d18a0b90d7007028dded03d7ef9923c2a7fc60f7e276bc6928fa9aeb6cbe8".parse().unwrap(),
             nonce: 0_u8.into(),
-            parent_hash: "0xc0debe594704702ec9c2e5a56595ccbc285305108286a6a19aa33f8b3755da65".to_string(),
-            receipts_root: "0x54179d043f2fe97f122a01366cd6ad18868501253282575fb00cada3fecf8fe1".to_string(),
-            sha3_uncles: "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347".to_string(),
+            parent_hash: "0xc0debe594704702ec9c2e5a56595ccbc285305108286a6a19aa33f8b3755da65".parse().unwrap(),
+            receipts_root: "0x54179d043f2fe97f122a01366cd6ad18868501253282575fb00cada3fecf8fe1".parse().unwrap(),
+            sha3_uncles: "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347".parse().unwrap(),
             size: 17_484_u32.into(),
-            state_root: "0x1e25cbd8eb25aadda3da160fd9b3fd46dfae61d7df1097d7990ca420e5c7c608".to_string(),
+            state_root: "0x1e25cbd8eb25aadda3da160fd9b3fd46dfae61d7df1097d7990ca420e5c7c608".parse().unwrap(),
             timestamp: 1_718_021_363_u32.into(),
-            total_difficulty: 58_750_003_716_598_352_816_469_u128.into(),
+            total_difficulty: Some(58_750_003_716_598_352_816_469_u128.into()),
             transactions: vec![
                 "0x5f17526ee5ab415ed44aa3788f0e8154230faa50f8b6d547a95858a8a90f259e",
                 "0x1d0d559a2e113a4a4b738c97536c48e4a047a491614ddefe77c6e0f25b9e3a42",
@@ -1300,8 +1305,8 @@ mod evm_rpc_conversion {
                 "0x25525be1316671638e2b6146f3e3259be8dee11cf8a24cb64b0feb2ad7f1ebf9",
                 "0x0518268fb4b06a1285997efb841615a74d113571332ac7c935d2a303ca1d6f23",
                 "0x1510c9bf4678ec3e67d05c908ba6d2762c4a815476638cc1d281d65a7dab6745"
-            ].into_iter().map(|s| s.to_string()).collect(),
-            transactions_root: Some("0xdee0b25a965ff236e4d2e89f56de233759d71ad3e3e150ceb4cf5bb1f0ecf5c0".to_string()),
+            ].into_iter().map(|s| s.parse().unwrap()).collect(),
+            transactions_root: Some("0xdee0b25a965ff236e4d2e89f56de233759d71ad3e3e150ceb4cf5bb1f0ecf5c0".parse().unwrap()),
             uncles: vec![],
         }
     }
@@ -1325,13 +1330,13 @@ mod evm_rpc_conversion {
         match minter_tx_receipt {
             None => Just(None).boxed(),
             Some(r) => (
-                option::of(".*"),
-                ".*",
+                option::of(arb_hex20()),
+                arb_hex20(),
                 vec(arb_log_entry(), 1..=100),
-                ".*",
-                ".*",
+                arb_hex256(),
+                option::of(arb_hex20()),
                 arb_nat_256(),
-                ".*",
+                arb_hex_byte(),
             )
                 .prop_map(
                     move |(
@@ -1341,22 +1346,25 @@ mod evm_rpc_conversion {
                         logs_bloom,
                         to,
                         transaction_index,
-                        r#type,
+                        tx_type,
                     )| {
                         Some(EvmTransactionReceipt {
-                            block_hash: r.block_hash.to_string(),
+                            block_hash: Hex32::from(r.block_hash.0),
                             block_number: r.block_number.into(),
                             effective_gas_price: r.effective_gas_price.into(),
                             gas_used: r.gas_used.into(),
-                            status: Nat::from(ethnum::u256::from(r.status).as_u8()),
-                            transaction_hash: r.transaction_hash.to_string(),
+                            status: Some(match r.status {
+                                TransactionStatus::Success => Nat256::from(1_u8),
+                                TransactionStatus::Failure => Nat256::ZERO,
+                            }),
+                            transaction_hash: Hex32::from(r.transaction_hash.0),
                             contract_address,
                             from,
                             logs: minter_logs.into_iter().map(evm_rpc_log_entry).collect(),
                             logs_bloom,
                             to,
                             transaction_index,
-                            r#type,
+                            tx_type,
                         })
                     },
                 )
@@ -1364,7 +1372,21 @@ mod evm_rpc_conversion {
         }
     }
 
-    fn arb_evm_rpc_transaction_count() -> impl Strategy<Value = EvmRpcResult<Nat>> {
+    fn arb_evm_rpc_transaction_count() -> impl Strategy<Value = EvmRpcResult<Nat256>> {
         proptest::result::maybe_ok(arb_nat_256(), arb_evm_rpc_error())
+    }
+
+    fn arb_evm_rpc_send_raw_transaction_status(
+    ) -> impl Strategy<Value = EvmSendRawTransactionStatus> {
+        use proptest::{
+            option,
+            prelude::{prop_oneof, Just},
+        };
+        prop_oneof![
+            option::of(arb_hex32()).prop_map(EvmSendRawTransactionStatus::Ok),
+            Just(EvmSendRawTransactionStatus::InsufficientFunds),
+            Just(EvmSendRawTransactionStatus::NonceTooLow),
+            Just(EvmSendRawTransactionStatus::NonceTooHigh),
+        ]
     }
 }

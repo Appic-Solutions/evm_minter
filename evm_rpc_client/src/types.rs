@@ -20,9 +20,9 @@ pub mod candid {
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, CandidType)]
     pub struct Block {
         #[serde(rename = "baseFeePerGas")]
-        pub base_fee_per_gas: Nat,
+        pub base_fee_per_gas: Option<Nat>,
         pub number: Nat,
-        pub difficulty: Nat,
+        pub difficulty: Option<Nat>,
         #[serde(rename = "extraData")]
         pub extra_data: String,
         #[serde(rename = "gasLimit")]
@@ -48,7 +48,7 @@ pub mod candid {
         #[serde(rename = "timestamp")]
         pub timestamp: Nat,
         #[serde(rename = "totalDifficulty")]
-        pub total_difficulty: Nat,
+        pub total_difficulty: Option<Nat>,
         #[serde(default)]
         pub transactions: Vec<String>,
         #[serde(rename = "transactionsRoot")]

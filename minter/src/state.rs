@@ -215,7 +215,7 @@ impl State {
     pub fn max_block_spread_for_logs_scraping(&self) -> u16 {
         // Limit set by the EVM-RPC canister itself, see
         // https://github.com/internet-computer-protocol/evm-rpc-canister/blob/3cce151d4c1338d83e6741afa354ccf11dff41e8/src/candid_rpc.rs#L192
-        500_u16
+        1000_u16
     }
 
     pub fn events_to_mint(&self) -> Vec<ReceivedDepositEvent> {
