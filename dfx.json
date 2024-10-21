@@ -6,7 +6,12 @@
       "type": "custom",
       "wasm": "target/wasm32-unknown-unknown/release/evm_minter.wasm",
       "shrink": false,
-      "build": ["make build"]
+      "build": ["make build"],
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     }
   },
   "defaults": {

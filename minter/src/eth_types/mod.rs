@@ -34,6 +34,11 @@ impl Address {
     pub fn is_native_token(&self) -> bool {
         self.0.iter().all(|&x| x == 0)
     }
+
+    /// Convert an Ethereum address into a 20-byte array.
+    pub const fn into_bytes(self) -> [u8; 20] {
+        self.0
+    }
 }
 
 impl LowerHex for Address {

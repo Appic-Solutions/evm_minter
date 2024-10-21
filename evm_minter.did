@@ -1,322 +1,326 @@
 type AccessListItem = record { storage_keys : vec blob; address : text };
 type Account = record { owner : principal; subaccount : opt blob };
+type AddErc20Token = record {
+  erc20_ledger_id : principal;
+  erc20_token_symbol : text;
+  chain_id : nat;
+  address : text;
+};
 type CandidBlockTag = variant { Safe; Finalized; Latest };
 type CanisterStatusResponse = record {
-    status : CanisterStatusType;
-    memory_size : nat;
-    cycles : nat;
-    settings : DefiniteCanisterSettings;
-    query_stats : QueryStats;
-    idle_cycles_burned_per_day : nat;
-    module_hash : opt blob;
-    reserved_cycles : nat;
+  status : CanisterStatusType;
+  memory_size : nat;
+  cycles : nat;
+  settings : DefiniteCanisterSettings;
+  query_stats : QueryStats;
+  idle_cycles_burned_per_day : nat;
+  module_hash : opt blob;
+  reserved_cycles : nat;
 };
 type CanisterStatusType = variant { stopped; stopping; running };
 type DefiniteCanisterSettings = record {
-    freezing_threshold : nat;
-    controllers : vec principal;
-    reserved_cycles_limit : nat;
-    memory_allocation : nat;
-    compute_allocation : nat;
+  freezing_threshold : nat;
+  controllers : vec principal;
+  reserved_cycles_limit : nat;
+  memory_allocation : nat;
+  compute_allocation : nat;
 };
 type Eip1559TransactionPrice = record {
-    max_priority_fee_per_gas : nat;
-    max_fee_per_gas : nat;
-    max_transaction_fee : nat;
-    timestamp : opt nat64;
-    gas_limit : nat;
+  max_priority_fee_per_gas : nat;
+  max_fee_per_gas : nat;
+  max_transaction_fee : nat;
+  timestamp : opt nat64;
+  gas_limit : nat;
 };
 type Eip1559TransactionPriceArg = record { erc20_ledger_id : principal };
 type Erc20Balance = record { balance : nat; erc20_contract_address : text };
 type Erc20Token = record {
-    erc20_token_symbol : text;
-    erc20_contract_address : text;
-    ledger_canister_id : principal;
+  erc20_token_symbol : text;
+  erc20_contract_address : text;
+  ledger_canister_id : principal;
 };
 type Event = record { timestamp : nat64; payload : EventPayload };
 type EventPayload = variant {
-    SkippedBlock : record { block_number : nat };
-    AcceptedErc20Deposit : record {
-        "principal" : principal;
-        transaction_hash : text;
-        value : nat;
-        log_index : nat;
-        block_number : nat;
-        erc20_contract_address : text;
-        from_address : text;
-    };
-    SignedTransaction : record { raw_transaction : text; withdrawal_id : nat };
-    Upgrade : UpgradeArg;
-    Init : InitArg;
-    AddedErc20Token : record {
-        erc20_ledger_id : principal;
-        erc20_token_symbol : text;
-        chain_id : nat;
-        address : text;
-    };
-    QuarantinedDeposit : record { event_source : EventSource };
-    SyncedToBlock : record { block_number : nat };
-    AcceptedDeposit : record {
-        "principal" : principal;
-        transaction_hash : text;
-        value : nat;
-        log_index : nat;
-        block_number : nat;
-        from_address : text;
-    };
-    ReplacedTransaction : record {
-        withdrawal_id : nat;
-        transaction : UnsignedTransaction;
-    };
-    QuarantinedReimbursement : record { index : ReimbursementIndex };
-    ReimbursedNativeWithdrawal : record {
-        transaction_hash : opt text;
-        withdrawal_id : nat;
-        reimbursed_amount : nat;
-        reimbursed_in_block : nat;
-    };
-    FailedErc20WithdrawalRequest : record {
-        to : principal;
-        withdrawal_id : nat;
-        reimbursed_amount : nat;
-        to_subaccount : opt blob;
-    };
-    MintedErc20 : record {
-        erc20_token_symbol : text;
-        event_source : EventSource;
-        erc20_contract_address : text;
-        mint_block_index : nat;
-    };
-    ReimbursedErc20Withdrawal : record {
-        burn_in_block : nat;
-        transaction_hash : opt text;
-        withdrawal_id : nat;
-        reimbursed_amount : nat;
-        ledger_id : principal;
-        reimbursed_in_block : nat;
-    };
-    AcceptedNativeWithdrawalRequest : record {
-        ledger_burn_index : nat;
-        destination : text;
-        withdrawal_amount : nat;
-        from : principal;
-        created_at : opt nat64;
-        from_subaccount : opt blob;
-    };
-    CreatedTransaction : record {
-        withdrawal_id : nat;
-        transaction : UnsignedTransaction;
-    };
-    InvalidDeposit : record { event_source : EventSource; reason : text };
-    AcceptedErc20WithdrawalRequest : record {
-        erc20_ledger_burn_index : nat;
-        destination : text;
-        withdrawal_amount : nat;
-        erc20_ledger_id : principal;
-        from : principal;
-        created_at : nat64;
-        from_subaccount : opt blob;
-        erc20_contract_address : text;
-        max_transaction_fee : nat;
-        native_ledger_burn_index : nat;
-    };
-    FinalizedTransaction : record {
-        withdrawal_id : nat;
-        transaction_receipt : TransactionReceipt;
-    };
-    MintedNative : record { event_source : EventSource; mint_block_index : nat };
+  SkippedBlock : record { block_number : nat };
+  AcceptedErc20Deposit : record {
+    "principal" : principal;
+    transaction_hash : text;
+    value : nat;
+    log_index : nat;
+    block_number : nat;
+    erc20_contract_address : text;
+    from_address : text;
+  };
+  SignedTransaction : record { raw_transaction : text; withdrawal_id : nat };
+  Upgrade : UpgradeArg;
+  Init : InitArg;
+  AddedErc20Token : AddErc20Token;
+  QuarantinedDeposit : record { event_source : EventSource };
+  SyncedToBlock : record { block_number : nat };
+  AcceptedDeposit : record {
+    "principal" : principal;
+    transaction_hash : text;
+    value : nat;
+    log_index : nat;
+    block_number : nat;
+    from_address : text;
+  };
+  ReplacedTransaction : record {
+    withdrawal_id : nat;
+    transaction : UnsignedTransaction;
+  };
+  QuarantinedReimbursement : record { index : ReimbursementIndex };
+  ReimbursedNativeWithdrawal : record {
+    transaction_hash : opt text;
+    withdrawal_id : nat;
+    reimbursed_amount : nat;
+    reimbursed_in_block : nat;
+  };
+  FailedErc20WithdrawalRequest : record {
+    to : principal;
+    withdrawal_id : nat;
+    reimbursed_amount : nat;
+    to_subaccount : opt blob;
+  };
+  MintedErc20 : record {
+    erc20_token_symbol : text;
+    event_source : EventSource;
+    erc20_contract_address : text;
+    mint_block_index : nat;
+  };
+  ReimbursedErc20Withdrawal : record {
+    burn_in_block : nat;
+    transaction_hash : opt text;
+    withdrawal_id : nat;
+    reimbursed_amount : nat;
+    ledger_id : principal;
+    reimbursed_in_block : nat;
+  };
+  AcceptedNativeWithdrawalRequest : record {
+    ledger_burn_index : nat;
+    destination : text;
+    withdrawal_amount : nat;
+    from : principal;
+    created_at : opt nat64;
+    from_subaccount : opt blob;
+  };
+  CreatedTransaction : record {
+    withdrawal_id : nat;
+    transaction : UnsignedTransaction;
+  };
+  InvalidDeposit : record { event_source : EventSource; reason : text };
+  AcceptedErc20WithdrawalRequest : record {
+    erc20_ledger_burn_index : nat;
+    destination : text;
+    withdrawal_amount : nat;
+    erc20_ledger_id : principal;
+    from : principal;
+    created_at : nat64;
+    from_subaccount : opt blob;
+    erc20_contract_address : text;
+    max_transaction_fee : nat;
+    native_ledger_burn_index : nat;
+  };
+  FinalizedTransaction : record {
+    withdrawal_id : nat;
+    transaction_receipt : TransactionReceipt;
+  };
+  MintedNative : record { event_source : EventSource; mint_block_index : nat };
 };
 type EventSource = record { transaction_hash : text; log_index : nat };
 type EvmNetwork = variant {
-    BSC;
-    Fantom;
-    Base;
-    Ethereum;
-    ArbitrumOne;
-    Sepolia;
-    Polygon;
-    Optimism;
-    Avalanche;
+  BSC;
+  Fantom;
+  Base;
+  Ethereum;
+  ArbitrumOne;
+  Sepolia;
+  Polygon;
+  Optimism;
+  Avalanche;
 };
 type GasFeeEstimate = record {
-    max_priority_fee_per_gas : nat;
-    max_fee_per_gas : nat;
-    timestamp : nat64;
+  max_priority_fee_per_gas : nat;
+  max_fee_per_gas : nat;
+  timestamp : nat64;
 };
 type GetEventsArg = record { start : nat64; length : nat64 };
 type GetEventsResult = record { total_event_count : nat64; events : vec Event };
 type InitArg = record {
-    last_scraped_block_number : nat;
-    ecdsa_key_name : text;
-    next_transaction_nonce : nat;
-    native_minimum_withdrawal_amount : nat;
-    native_symbol : text;
-    helper_contract_address : opt text;
-    native_ledger_transfer_fee : nat;
-    native_ledger_id : principal;
-    block_height : CandidBlockTag;
-    evm_network : EvmNetwork;
-    min_max_priority_fee_per_gas : nat;
+  last_scraped_block_number : nat;
+  ecdsa_key_name : text;
+  next_transaction_nonce : nat;
+  native_minimum_withdrawal_amount : nat;
+  native_symbol : text;
+  helper_contract_address : opt text;
+  native_ledger_transfer_fee : nat;
+  native_ledger_id : principal;
+  block_height : CandidBlockTag;
+  evm_network : EvmNetwork;
+  min_max_priority_fee_per_gas : nat;
 };
 type LedgerError = variant {
-    TemporarilyUnavailable : text;
-    InsufficientAllowance : record {
-        token_symbol : text;
-        ledger_id : principal;
-        allowance : nat;
-        failed_burn_amount : nat;
-    };
-    AmountTooLow : record {
-        minimum_burn_amount : nat;
-        token_symbol : text;
-        ledger_id : principal;
-        failed_burn_amount : nat;
-    };
-    InsufficientFunds : record {
-        balance : nat;
-        token_symbol : text;
-        ledger_id : principal;
-        failed_burn_amount : nat;
-    };
+  TemporarilyUnavailable : text;
+  InsufficientAllowance : record {
+    token_symbol : text;
+    ledger_id : principal;
+    allowance : nat;
+    failed_burn_amount : nat;
+  };
+  AmountTooLow : record {
+    minimum_burn_amount : nat;
+    token_symbol : text;
+    ledger_id : principal;
+    failed_burn_amount : nat;
+  };
+  InsufficientFunds : record {
+    balance : nat;
+    token_symbol : text;
+    ledger_id : principal;
+    failed_burn_amount : nat;
+  };
 };
 type MinterArg = variant { UpgradeArg : UpgradeArg; InitArg : InitArg };
 type MinterInfo = record {
-    eth_balance : opt nat;
-    last_scraped_block_number : opt nat;
-    last_observed_block_number : opt nat;
-    supported_erc20_tokens : opt vec Erc20Token;
-    last_gas_fee_estimate : opt GasFeeEstimate;
-    native_twin_token_ledger_id : opt principal;
-    helper_smart_contract_address : opt text;
-    minimum_withdrawal_amount : opt nat;
-    erc20_balances : opt vec Erc20Balance;
-    minter_address : opt text;
-    block_height : opt CandidBlockTag;
+  eth_balance : opt nat;
+  last_scraped_block_number : opt nat;
+  last_observed_block_number : opt nat;
+  supported_erc20_tokens : opt vec Erc20Token;
+  last_gas_fee_estimate : opt GasFeeEstimate;
+  native_twin_token_ledger_id : opt principal;
+  helper_smart_contract_address : opt text;
+  minimum_withdrawal_amount : opt nat;
+  erc20_balances : opt vec Erc20Balance;
+  minter_address : opt text;
+  block_height : opt CandidBlockTag;
 };
 type QueryStats = record {
-    response_payload_bytes_total : nat;
-    num_instructions_total : nat;
-    num_calls_total : nat;
-    request_payload_bytes_total : nat;
+  response_payload_bytes_total : nat;
+  num_instructions_total : nat;
+  num_calls_total : nat;
+  request_payload_bytes_total : nat;
 };
 type ReimbursementIndex = variant {
-    Erc20 : record {
-        erc20_ledger_burn_index : nat;
-        ledger_id : principal;
-        native_ledger_burn_index : nat;
-    };
-    Native : record { ledger_burn_index : nat };
+  Erc20 : record {
+    erc20_ledger_burn_index : nat;
+    ledger_id : principal;
+    native_ledger_burn_index : nat;
+  };
+  Native : record { ledger_burn_index : nat };
 };
 type Result = variant { Ok : RetrieveErc20Request; Err : WithdrawErc20Error };
 type Result_1 = variant { Ok : RetrieveNativeRequest; Err : WithdrawalError };
 type RetrieveErc20Request = record {
-    erc20_block_index : nat;
-    native_block_index : nat;
+  erc20_block_index : nat;
+  native_block_index : nat;
 };
 type RetrieveNativeRequest = record { block_index : nat };
 type RetrieveNativeStatus = variant {
-    NotFound;
-    TxFinalized : TxFinalizedStatus;
-    TxSent : Transaction;
-    TxCreated;
-    Pending;
+  NotFound;
+  TxFinalized : TxFinalizedStatus;
+  TxSent : Transaction;
+  TxCreated;
+  Pending;
 };
 type Transaction = record { transaction_hash : text };
 type TransactionReceipt = record {
-    effective_gas_price : nat;
-    status : TransactionStatus;
-    transaction_hash : text;
-    block_hash : text;
-    block_number : nat;
-    gas_used : nat;
+  effective_gas_price : nat;
+  status : TransactionStatus;
+  transaction_hash : text;
+  block_hash : text;
+  block_number : nat;
+  gas_used : nat;
 };
 type TransactionStatus = variant { Success; Failure };
 type TxFinalizedStatus = variant {
-    Success : record {
-        transaction_hash : text;
-        effective_transaction_fee : opt nat;
-    };
-    Reimbursed : record {
-        transaction_hash : text;
-        reimbursed_amount : nat;
-        reimbursed_in_block : nat;
-    };
-    PendingReimbursement : Transaction;
+  Success : record {
+    transaction_hash : text;
+    effective_transaction_fee : opt nat;
+  };
+  Reimbursed : record {
+    transaction_hash : text;
+    reimbursed_amount : nat;
+    reimbursed_in_block : nat;
+  };
+  PendingReimbursement : Transaction;
 };
 type UnsignedTransaction = record {
-    destination : text;
-    value : nat;
-    max_priority_fee_per_gas : nat;
-    data : blob;
-    max_fee_per_gas : nat;
-    chain_id : nat;
-    nonce : nat;
-    gas_limit : nat;
-    access_list : vec AccessListItem;
+  destination : text;
+  value : nat;
+  max_priority_fee_per_gas : nat;
+  data : blob;
+  max_fee_per_gas : nat;
+  chain_id : nat;
+  nonce : nat;
+  gas_limit : nat;
+  access_list : vec AccessListItem;
 };
 type UpgradeArg = record {
-    last_scraped_block_number : opt nat;
-    next_transaction_nonce : opt nat;
-    evm_rpc_id : opt principal;
-    native_minimum_withdrawal_amount : opt nat;
-    helper_contract_address : opt text;
-    native_ledger_transfer_fee : opt nat;
-    block_height : opt CandidBlockTag;
+  last_scraped_block_number : opt nat;
+  next_transaction_nonce : opt nat;
+  evm_rpc_id : opt principal;
+  native_minimum_withdrawal_amount : opt nat;
+  helper_contract_address : opt text;
+  native_ledger_transfer_fee : opt nat;
+  block_height : opt CandidBlockTag;
 };
 type WithdrawErc20Arg = record {
-    erc20_ledger_id : principal;
-    recipient : text;
-    amount : nat;
+  erc20_ledger_id : principal;
+  recipient : text;
+  amount : nat;
 };
 type WithdrawErc20Error = variant {
-    TokenNotSupported : record { supported_tokens : vec Erc20Token };
-    TemporarilyUnavailable : text;
-    InvalidDestination : text;
-    NativeLedgerError : record { error : LedgerError };
-    Erc20LedgerError : record { error : LedgerError; native_block_index : nat };
+  TokenNotSupported : record { supported_tokens : vec Erc20Token };
+  TemporarilyUnavailable : text;
+  InvalidDestination : text;
+  NativeLedgerError : record { error : LedgerError };
+  Erc20LedgerError : record { error : LedgerError; native_block_index : nat };
 };
 type WithdrawalArg = record { recipient : text; amount : nat };
 type WithdrawalDetail = record {
-    status : WithdrawalStatus;
-    token_symbol : text;
-    withdrawal_amount : nat;
-    withdrawal_id : nat64;
-    from : principal;
-    from_subaccount : opt blob;
-    max_transaction_fee : opt nat;
-    recipient_address : text;
+  status : WithdrawalStatus;
+  token_symbol : text;
+  withdrawal_amount : nat;
+  withdrawal_id : nat64;
+  from : principal;
+  from_subaccount : opt blob;
+  max_transaction_fee : opt nat;
+  recipient_address : text;
 };
 type WithdrawalError = variant {
-    TemporarilyUnavailable : text;
-    InvalidDestination : text;
-    InsufficientAllowance : record { allowance : nat };
-    AmountTooLow : record { min_withdrawal_amount : nat };
-    InsufficientFunds : record { balance : nat };
+  TemporarilyUnavailable : text;
+  InvalidDestination : text;
+  InsufficientAllowance : record { allowance : nat };
+  AmountTooLow : record { min_withdrawal_amount : nat };
+  InsufficientFunds : record { balance : nat };
 };
 type WithdrawalSearchParameter = variant {
-    ByRecipient : text;
-    BySenderAccount : Account;
-    ByWithdrawalId : nat64;
+  ByRecipient : text;
+  BySenderAccount : Account;
+  ByWithdrawalId : nat64;
 };
 type WithdrawalStatus = variant {
-    TxFinalized : TxFinalizedStatus;
-    TxSent : Transaction;
-    TxCreated;
-    Pending;
+  TxFinalized : TxFinalizedStatus;
+  TxSent : Transaction;
+  TxCreated;
+  Pending;
 };
 service : (MinterArg) -> {
-    eip_1559_transaction_price : (opt Eip1559TransactionPriceArg) -> (
-        Eip1559TransactionPrice
+  add_erc20_token : (AddErc20Token) -> ();
+  check_new_deposits : () -> ();
+  eip_1559_transaction_price : (opt Eip1559TransactionPriceArg) -> (
+      Eip1559TransactionPrice,
     ) query;
-    get_canister_status : () -> (CanisterStatusResponse);
-    get_events : (GetEventsArg) -> (GetEventsResult) query;
-    get_minter_info : () -> (MinterInfo) query;
-    minter_address : () -> (text);
-    retrieve_native_status : (nat64) -> (RetrieveNativeStatus);
-    smart_contract_address : () -> (text) query;
-    withdraw_erc20 : (WithdrawErc20Arg) -> (Result);
-    withdraw_native_token : (WithdrawalArg) -> (Result_1);
-    withdrawal_status : (WithdrawalSearchParameter) -> (
-        vec WithdrawalDetail
+  get_block_number : () -> (opt nat);
+  get_canister_status : () -> (CanisterStatusResponse);
+  get_events : (GetEventsArg) -> (GetEventsResult) query;
+  get_minter_info : () -> (MinterInfo) query;
+  minter_address : () -> (text);
+  retrieve_native_status : (nat64) -> (RetrieveNativeStatus);
+  smart_contract_address : () -> (text) query;
+  withdraw_erc20 : (WithdrawErc20Arg) -> (Result);
+  withdraw_native_token : (WithdrawalArg) -> (Result_1);
+  withdrawal_status : (WithdrawalSearchParameter) -> (
+      vec WithdrawalDetail,
     ) query;
-};
+}

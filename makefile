@@ -11,5 +11,6 @@ build:
 	@echo "Ankr_Api_Key = $(Ankr_Api_Key)"
 	@echo "Alchemy_Api_Key = $(Alchemy_Api_Key)"
 	cargo build --release --target wasm32-unknown-unknown --package evm_minter
+	candid-extractor target/wasm32-unknown-unknown/release/evm_minter.wasm > evm_minter.did
 
 

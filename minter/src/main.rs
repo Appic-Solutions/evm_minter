@@ -98,7 +98,7 @@ fn init(arg: MinterArg) {
     set_rpc_api_key(Provider::Ankr, ankr_api_key.to_string());
     set_rpc_api_key(Provider::Alchemy, alchemy_api_key.to_string());
 
-    setup_timers();
+    // setup_timers();
 }
 
 fn emit_preupgrade_events() {
@@ -124,7 +124,7 @@ fn post_upgrade(minter_arg: Option<MinterArg>) {
         Some(MinterArg::UpgradeArg(upgrade_args)) => lifecycle::post_upgrade(Some(upgrade_args)),
         None => lifecycle::post_upgrade(None),
     }
-    setup_timers();
+    // setup_timers();
 }
 
 #[update]
@@ -497,14 +497,14 @@ async fn add_erc20_token(erc20_token: AddErc20Token) {
     mutate_state(|s| process_event(s, EventType::AddedErc20Token(erc20_token)));
 }
 
-// #[update]
-// async fn get_deposit_logs() -> Option<Nat> {
-//     let block_number = update_last_observed_block_number().await;
-//     match block_number {
-//         Some(block) => Some(Nat::from(block)),
-//         None => None,
-//     }
-// }
+#[update]
+async fn get_block_number() -> Option<Nat> {
+    let block_number = update_last_observed_block_number().await;
+    match block_number {
+        Some(block) => Some(Nat::from(block)),
+        None => None,
+    }
+}
 
 #[update]
 async fn get_canister_status() -> ic_cdk::api::management_canister::main::CanisterStatusResponse {
@@ -518,6 +518,7 @@ async fn get_canister_status() -> ic_cdk::api::management_canister::main::Canist
     .0
 }
 
+// Only the swap casniter can call this function to make the process of swapping faster
 #[update]
 async fn check_new_deposits() {
     let swap_canister_id = read_state(|s| s.swap_canister_id)

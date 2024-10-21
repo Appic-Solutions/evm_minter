@@ -1,12 +1,6 @@
 #[cfg(test)]
 mod tests;
 
-pub mod types;
-
-use crate::types::candid::{
-    Block, BlockTag, FeeHistory, FeeHistoryArgs, GetLogsArgs, LogEntry, MultiRpcResult,
-    ProviderError, RpcConfig, RpcError, RpcServices,
-};
 use async_trait::async_trait;
 use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Nat, Principal};
@@ -14,7 +8,13 @@ use ic_canister_log::{log, Sink};
 use ic_cdk::api::call::RejectionCode;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
-use types::candid::{GetTransactionCountArgs, SendRawTransactionStatus, TransactionReceipt};
+
+pub use evm_rpc_types::{
+    Block, BlockTag, ConsensusStrategy, EthMainnetService, FeeHistory, FeeHistoryArgs, GetLogsArgs,
+    GetTransactionCountArgs, Hex, Hex20, Hex256, Hex32, HexByte, HttpOutcallError, JsonRpcError,
+    LogEntry, MultiRpcResult, Nat256, ProviderError, RpcApi, RpcConfig, RpcError, RpcResult,
+    RpcService, RpcServices, SendRawTransactionStatus, TransactionReceipt, ValidationError,
+};
 
 #[async_trait]
 pub trait InterCanisterCall {
@@ -123,7 +123,7 @@ impl<L: Sink> EvmRpcClient<L> {
     pub async fn eth_get_transaction_count(
         &self,
         args: GetTransactionCountArgs,
-    ) -> MultiRpcResult<Nat> {
+    ) -> MultiRpcResult<Nat256> {
         self.call_internal(
             "eth_getTransactionCount",
             self.override_rpc_config.eth_get_transaction_count.clone(),
@@ -177,8 +177,10 @@ impl<L: Sink> EvmRpcClient<L> {
                     attached_cycles,
                 )
                 .await
-                .unwrap_or_else(|(code, msg)| {
-                    MultiRpcResult::Consistent(Err(RpcError::from_rejection(code, msg)))
+                .unwrap_or_else(|(code, message)| {
+                    MultiRpcResult::Consistent(Err(RpcError::HttpOutcallError(
+                        HttpOutcallError::IcError { code, message },
+                    )))
                 });
             log!(
                 self.logger,
@@ -208,8 +210,7 @@ impl<L: Sink> EvmRpcClient<L> {
 }
 
 fn max_expected_too_few_cycles_error<Out>(result: &MultiRpcResult<Out>) -> Option<u128> {
-    result
-        .iter()
+    multi_rpc_result_iter(result)
         .filter_map(|res| match res {
             Err(RpcError::ProviderError(ProviderError::TooFewCycles {
                 expected,
@@ -218,6 +219,17 @@ fn max_expected_too_few_cycles_error<Out>(result: &MultiRpcResult<Out>) -> Optio
             _ => None,
         })
         .max()
+}
+
+fn multi_rpc_result_iter<Out>(
+    result: &MultiRpcResult<Out>,
+) -> Box<dyn Iterator<Item = &RpcResult<Out>> + '_> {
+    match result {
+        MultiRpcResult::Consistent(result) => Box::new(std::iter::once(result)),
+        MultiRpcResult::Inconsistent(results) => {
+            Box::new(results.iter().map(|(_service, result)| result))
+        }
+    }
 }
 pub struct EvmRpcClientBuilder<L: Sink> {
     caller_service: CallerService,
@@ -232,21 +244,14 @@ pub struct EvmRpcClientBuilder<L: Sink> {
 impl<L: Sink> EvmRpcClientBuilder<L> {
     pub fn new(caller_service: CallerService, logger: L) -> Self {
         const DEFAULT_PROVIDERS: RpcServices = RpcServices::EthMainnet(None);
-        const EVM_RPC_CANISTER_ID_FIDUCIARY: Principal =
-            Principal::from_slice(&[0_u8, 0, 0, 0, 2, 48, 0, 204, 1, 1]);
         const DEFAULT_MIN_ATTACHED_CYCLES: u128 = 3_000_000_000;
         const DEFAULT_MAX_NUM_RETRIES: u32 = 10;
-
-        debug_assert_eq!(
-            EVM_RPC_CANISTER_ID_FIDUCIARY,
-            Principal::from_text("7hfb6-caaaa-aaaar-qadga-cai").unwrap()
-        );
 
         Self {
             caller_service,
             logger,
             providers: DEFAULT_PROVIDERS,
-            evm_canister_id: EVM_RPC_CANISTER_ID_FIDUCIARY,
+            evm_canister_id: Principal::from_text("sosge-5iaaa-aaaag-alcla-cai").unwrap(),
             override_rpc_config: Default::default(),
             min_attached_cycles: DEFAULT_MIN_ATTACHED_CYCLES,
             max_num_retries: DEFAULT_MAX_NUM_RETRIES,

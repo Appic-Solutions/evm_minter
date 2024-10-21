@@ -2,7 +2,7 @@ use crate::endpoints::CandidBlockTag;
 use crate::eth_types::serde_data;
 use crate::eth_types::Address;
 use crate::numeric::{BlockNumber, GasAmount, LogIndex, Wei, WeiPerGas};
-use evm_rpc_client::types::candid::SendRawTransactionStatus as EvmSendRawTransactionStatus;
+use evm_rpc_types::SendRawTransactionStatus as EvmSendRawTransactionStatus;
 use minicbor::{Decode, Encode};
 use serde;
 use serde::{Deserialize, Serialize};
