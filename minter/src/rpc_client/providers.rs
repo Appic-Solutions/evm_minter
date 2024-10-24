@@ -23,6 +23,81 @@ impl Provider {
     }
 }
 
+pub fn get_one_provider(network: EvmNetwork) -> RpcServices {
+    let chain_id = network.chain_id();
+    match network {
+        EvmNetwork::Ethereum => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode
+                    .get_url_with_api_key("https://ethereum-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Sepolia => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode
+                    .get_url_with_api_key("https://ethereum-sepolia-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::ArbitrumOne => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode
+                    .get_url_with_api_key("https://arbitrum-one-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::BSC => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode.get_url_with_api_key("https://bsc-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Polygon => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode
+                    .get_url_with_api_key("https://polygon-bor-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Optimism => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode
+                    .get_url_with_api_key("https://optimism-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Base => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode.get_url_with_api_key("https://base-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Avalanche => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode
+                    .get_url_with_api_key("https://avalanche-c-chain-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Fantom => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode.get_url_with_api_key("https://fantom-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
+    }
+}
+
 pub fn get_providers(network: EvmNetwork) -> RpcServices {
     let chain_id = network.chain_id();
     match network {

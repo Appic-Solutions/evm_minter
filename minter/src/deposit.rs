@@ -4,13 +4,15 @@ use std::time::Duration;
 use ic_canister_log::log;
 use scopeguard::ScopeGuard;
 
+use crate::checked_amount::CheckedAmountOf;
 use crate::deposit_logs::{
     report_transaction_error, ReceivedDepositEvent, ReceivedDepsitEventError,
 };
 use crate::eth_types::Address;
+use crate::evm_config::EvmNetwork;
 use crate::guard::TimerGuard;
 use crate::logs::{DEBUG, INFO};
-use crate::numeric::{BlockNumber, LedgerMintIndex};
+use crate::numeric::{BlockNumber, BlockNumberTag, LedgerMintIndex};
 use crate::rpc_client::{is_response_too_large, RpcClient};
 use crate::rpc_declrations::BlockSpec;
 use crate::state::audit::{process_event, EventType};
@@ -329,12 +331,25 @@ pub async fn scrape_logs() {
 // Updates last_observed_block_number in the state.
 pub async fn update_last_observed_block_number() -> Option<BlockNumber> {
     let block_height = read_state(State::block_height);
-    match read_state(RpcClient::from_state)
+    let network = read_state(|state| state.evm_network);
+    match read_state(RpcClient::from_state_one_provider)
         .get_block_by_number(BlockSpec::Tag(block_height))
         .await
     {
         Ok(latest_block) => {
-            let block_number = Some(latest_block.number);
+            let mut block_number = Some(latest_block.number);
+            match network {
+                EvmNetwork::BSC => {
+                    // Waiting for 20 blocks means the transaction is practically safe on BSC
+                    // So we go 15 blocks before the latest block
+                    block_number = latest_block.number.checked_sub(
+                        BlockNumber::try_from(20_u32)
+                            .expect("Removing 15 blocks from latest block shouldnever fails"),
+                    )
+                }
+
+                _ => {}
+            }
             mutate_state(|s| s.last_observed_block_number = block_number);
             block_number
         }
