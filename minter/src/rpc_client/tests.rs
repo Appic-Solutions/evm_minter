@@ -10,11 +10,11 @@ mod providers {
 
     #[test]
     fn should_generate_url_with_api_key() {
-        set_rpc_api_key(Provider::Alchemy, "Test_key_Alchemy".to_string());
+        set_rpc_api_key(Provider::LlamaNodes, "Test_key_Alchemy".to_string());
 
         assert_eq!(
-            Provider::Alchemy.get_url_with_api_key("https://polygon-mainnet.g.alchemy.com/v2"),
-            "https://polygon-mainnet.g.alchemy.com/v2/Test_key_Alchemy".to_string()
+            Provider::LlamaNodes.get_url_with_api_key("https://polygon.llamarpc.com"),
+            "https://polygon.llamarpc.com/Test_key_Alchemy".to_string()
         );
 
         assert_eq!(
@@ -44,8 +44,7 @@ mod providers {
             chain_id: EvmNetwork::Polygon.chain_id(),
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://polygon-mainnet.g.alchemy.com/v2"),
+                    url: Provider::LlamaNodes.get_url_with_api_key("https://polygon.llamarpc.com"),
                     headers: None,
                 },
                 RpcApi {

@@ -10,7 +10,7 @@ pub enum Provider {
     #[n(0)]
     Ankr,
     #[n(1)]
-    Alchemy,
+    LlamaNodes,
     #[n(2)]
     PublicNode,
 }
@@ -105,8 +105,7 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             chain_id,
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://eth-mainnet.g.alchemy.com/v2"),
+                    url: Provider::LlamaNodes.get_url_with_api_key("https://eth.llamarpc.com"),
                     headers: None,
                 },
                 RpcApi {
@@ -124,11 +123,6 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             chain_id,
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://eth-sepolia.g.alchemy.com/v2"),
-                    headers: None,
-                },
-                RpcApi {
                     url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/eth_sepolia"),
                     headers: None,
                 },
@@ -143,8 +137,7 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             chain_id,
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://arb-mainnet.g.alchemy.com/v2"),
+                    url: Provider::LlamaNodes.get_url_with_api_key("https://arbitrum.llamarpc.com"),
                     headers: None,
                 },
                 RpcApi {
@@ -162,8 +155,7 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             chain_id,
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://bnb-mainnet.g.alchemy.com/v2"),
+                    url: Provider::LlamaNodes.get_url_with_api_key("https://binance.llamarpc.com"),
                     headers: None,
                 },
                 RpcApi {
@@ -181,8 +173,7 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             chain_id,
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://polygon-mainnet.g.alchemy.com/v2"),
+                    url: Provider::LlamaNodes.get_url_with_api_key("https://polygon.llamarpc.com"),
                     headers: None,
                 },
                 RpcApi {
@@ -200,8 +191,7 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             chain_id,
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://opt-mainnet.g.alchemy.com/v2"),
+                    url: Provider::LlamaNodes.get_url_with_api_key("https://optimism.llamarpc.com"),
                     headers: None,
                 },
                 RpcApi {
@@ -219,8 +209,7 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             chain_id,
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://base-mainnet.g.alchemy.com/v2"),
+                    url: Provider::LlamaNodes.get_url_with_api_key("https://base.llamarpc.com"),
                     headers: None,
                 },
                 RpcApi {
@@ -238,11 +227,6 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             chain_id,
             services: vec![
                 RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://avax-mainnet.g.alchemy.com/v2"),
-                    headers: None,
-                },
-                RpcApi {
                     url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/avalanche"),
                     headers: None,
                 },
@@ -256,11 +240,6 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
         EvmNetwork::Fantom => RpcServices::Custom {
             chain_id,
             services: vec![
-                RpcApi {
-                    url: Provider::Alchemy
-                        .get_url_with_api_key("https://fantom-mainnet.g.alchemy.com/v2"),
-                    headers: None,
-                },
                 RpcApi {
                     url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/fantom"),
                     headers: None,

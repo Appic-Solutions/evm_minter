@@ -48,7 +48,7 @@ use std::time::Duration;
 
 // Set api_keys for rpc providers
 const ANKR_API_KEY: Option<&'static str> = option_env!("Ankr_Api_Key");
-const ALCHEMY_API_KEY: Option<&'static str> = option_env!("Alchemy_Api_Key");
+const LLAMA_API_KEY: Option<&'static str> = option_env!("Llama_Api_Key");
 
 fn validate_caller_not_anonymous() -> candid::Principal {
     let principal = ic_cdk::caller();
@@ -94,9 +94,9 @@ fn init(arg: MinterArg) {
         }
     }
     let ankr_api_key = ANKR_API_KEY.unwrap();
-    let alchemy_api_key = ALCHEMY_API_KEY.unwrap();
+    let llama_api_key = LLAMA_API_KEY.unwrap();
     set_rpc_api_key(Provider::Ankr, ankr_api_key.to_string());
-    set_rpc_api_key(Provider::Alchemy, alchemy_api_key.to_string());
+    set_rpc_api_key(Provider::LlamaNodes, llama_api_key.to_string());
 
     // setup_timers();
 }
