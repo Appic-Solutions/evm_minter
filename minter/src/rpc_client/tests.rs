@@ -10,11 +10,11 @@ mod providers {
 
     #[test]
     fn should_generate_url_with_api_key() {
-        set_rpc_api_key(Provider::LlamaNodes, "Test_key_Alchemy".to_string());
+        set_rpc_api_key(Provider::LlamaNodes, "Test_key_Llama".to_string());
 
         assert_eq!(
             Provider::LlamaNodes.get_url_with_api_key("https://polygon.llamarpc.com"),
-            "https://polygon.llamarpc.com/Test_key_Alchemy".to_string()
+            "https://polygon.llamarpc.com/Test_key_Llama".to_string()
         );
 
         assert_eq!(
