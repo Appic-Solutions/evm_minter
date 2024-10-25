@@ -2,7 +2,7 @@
 mod tests;
 
 pub mod providers;
-use providers::get_providers;
+use providers::{get_one_provider, get_providers};
 use std::{collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr};
 
 use crate::{
@@ -50,14 +50,45 @@ pub struct RpcClient {
     chain: EvmNetwork,
 }
 impl RpcClient {
-    pub fn from_state(state: &State) -> Self {
+    pub fn from_state_all_providers(state: &State) -> Self {
         let mut client = Self {
             evm_rpc_client: None,
             chain: state.evm_network,
         };
-        const MIN_ATTACHED_CYCLES: u128 = 100_000_000_000;
+        const MIN_ATTACHED_CYCLES: u128 = 30_000_000_000;
 
         let providers = get_providers(client.chain);
+
+        client.evm_rpc_client = Some(
+            EvmRpcClient::builder(CallerService {}, TRACE_HTTP)
+                .with_providers(providers)
+                .with_evm_canister_id(
+                    Principal::from_text("sosge-5iaaa-aaaag-alcla-cai").expect("Wrong principal"),
+                )
+                .with_min_attached_cycles(MIN_ATTACHED_CYCLES)
+                .with_override_rpc_config(OverrideRpcConfig {
+                    eth_get_logs: Some(EvmRpcConfig {
+                        response_size_estimate: Some(
+                            ETH_GET_LOGS_INITIAL_RESPONSE_SIZE_ESTIMATE + HEADER_SIZE_LIMIT,
+                        ),
+                        response_consensus: None,
+                    }),
+                    ..Default::default()
+                })
+                .build(),
+        );
+
+        client
+    }
+
+    pub fn from_state_one_provider(state: &State) -> Self {
+        let mut client = Self {
+            evm_rpc_client: None,
+            chain: state.evm_network,
+        };
+        const MIN_ATTACHED_CYCLES: u128 = 30_000_000_000;
+
+        let providers = get_one_provider(client.chain);
 
         client.evm_rpc_client = Some(
             EvmRpcClient::builder(CallerService {}, TRACE_HTTP)

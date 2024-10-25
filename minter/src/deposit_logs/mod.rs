@@ -240,7 +240,7 @@ pub async fn last_received_deposit_events(
         )
     }
 
-    let result = read_state(RpcClient::from_state)
+    let result = read_state(RpcClient::from_state_all_providers)
         .get_logs(GetLogsParam {
             from_block: from.into(),
             to_block: to.into(),
