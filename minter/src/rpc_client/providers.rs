@@ -57,6 +57,14 @@ pub fn get_one_provider(network: EvmNetwork) -> RpcServices {
                 headers: None,
             }],
         },
+        EvmNetwork::BSCTestnet => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::PublicNode
+                    .get_url_with_api_key("https://bsc-testnet-rpc.publicnode.com"),
+                headers: None,
+            }],
+        },
         EvmNetwork::Polygon => RpcServices::Custom {
             chain_id,
             services: vec![RpcApi {
@@ -247,6 +255,21 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
                 RpcApi {
                     url: Provider::PublicNode
                         .get_url_with_api_key("https://fantom-rpc.publicnode.com"),
+                    headers: None,
+                },
+            ],
+        },
+        EvmNetwork::BSCTestnet => RpcServices::Custom {
+            chain_id,
+            services: vec![
+                RpcApi {
+                    url: Provider::Ankr
+                        .get_url_with_api_key("https://rpc.ankr.com/bsc_testnet_chapel/"),
+                    headers: None,
+                },
+                RpcApi {
+                    url: Provider::PublicNode
+                        .get_url_with_api_key("https://bsc-testnet-rpc.publicnode.com"),
                     headers: None,
                 },
             ],

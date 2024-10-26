@@ -3,6 +3,7 @@ mod test;
 
 use std::fmt;
 
+use crate::checked_amount::CheckedAmountOf;
 use crate::eth_types::Address;
 use crate::logs::{DEBUG, INFO};
 use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
@@ -330,7 +331,7 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
         let from_address = parse_address(&user_address)?;
 
         // We have 4 indexed topics for all deposit events:
-        // (hash, contract_address of the token(in case of native token its 0x000000000000000000000000000), amount of token(value), principalId)
+        // (hash,Indexed contract_address of the token(in case of native token its 0x000000000000000000000000000), Indexed amount of token(value), Indexed principalId)
         match entry.topics[0] {
             FixedSizeData(crate::state::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC) => {
                 if entry.topics.len() != 4 {
@@ -421,4 +422,28 @@ fn parse_principal_from_slice(slice: &[u8]) -> Result<Principal, String> {
         return Err("anonymous principal is not allowed".to_string());
     }
     Principal::try_from_slice(principal_bytes).map_err(|err| err.to_string())
+}
+
+enum InternalLedgerSubaccountTag {}
+type InternalLedgerSubaccount = CheckedAmountOf<InternalLedgerSubaccountTag>;
+
+/// Ledger subaccount.
+///
+/// Internally represented as a u256 to optimize cbor encoding for low values,
+/// which can be represented as a u32 or a u64.
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Decode, Encode)]
+pub struct LedgerSubaccount(#[n(0)] InternalLedgerSubaccount);
+
+impl LedgerSubaccount {
+    pub fn from_bytes(bytes: [u8; 32]) -> Option<Self> {
+        const DEFAULT_SUBACCOUNT: [u8; 32] = [0; 32];
+        if bytes == DEFAULT_SUBACCOUNT {
+            return None;
+        }
+        Some(Self(InternalLedgerSubaccount::from_be_bytes(bytes)))
+    }
+
+    pub fn to_bytes(self) -> [u8; 32] {
+        self.0.to_be_bytes()
+    }
 }

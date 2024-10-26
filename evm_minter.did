@@ -22,6 +22,8 @@ type DefiniteCanisterSettings = record {
   freezing_threshold : nat;
   controllers : vec principal;
   reserved_cycles_limit : nat;
+  log_visibility : LogVisibility;
+  wasm_memory_limit : nat;
   memory_allocation : nat;
   compute_allocation : nat;
 };
@@ -180,6 +182,7 @@ type LedgerError = variant {
     failed_burn_amount : nat;
   };
 };
+type LogVisibility = variant { controllers; public };
 type MinterArg = variant { UpgradeArg : UpgradeArg; InitArg : InitArg };
 type MinterInfo = record {
   eth_balance : opt nat;

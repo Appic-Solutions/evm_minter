@@ -30,6 +30,8 @@ pub enum EvmNetwork {
     ArbitrumOne,
     #[n(56)]
     BSC,
+    #[n(97)]
+    BSCTestnet,
     #[n(137)]
     Polygon,
     #[n(10)]
@@ -54,6 +56,7 @@ impl EvmNetwork {
             EvmNetwork::Base => 8453,
             EvmNetwork::Avalanche => 43114,
             EvmNetwork::Fantom => 250,
+            EvmNetwork::BSCTestnet => 97,
         }
     }
 }
@@ -72,6 +75,7 @@ impl TryFrom<u64> for EvmNetwork {
             8453 => Ok(EvmNetwork::Base),
             43114 => Ok(EvmNetwork::Avalanche),
             250 => Ok(EvmNetwork::Fantom),
+            97 => Ok(EvmNetwork::BSCTestnet),
             _ => Err("Unknown EVM chain id Network".to_string()),
         }
     }
@@ -89,6 +93,7 @@ impl Display for EvmNetwork {
             EvmNetwork::Base => write!(f, "Base mainnet"),
             EvmNetwork::Avalanche => write!(f, "Avalanche mainnet"),
             EvmNetwork::Fantom => write!(f, "Fantom mainnet"),
+            EvmNetwork::BSCTestnet => write!(f, "Bnb Testnet"),
         }
     }
 }

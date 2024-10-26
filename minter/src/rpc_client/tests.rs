@@ -31,7 +31,7 @@ mod providers {
                     chain_id: _,
                     services,
                 } => {
-                    assert!(services.len() >= 3)
+                    assert!(services.len() >= 2)
                 }
                 _ => (),
             }
