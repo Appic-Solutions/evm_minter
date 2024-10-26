@@ -204,7 +204,7 @@ async fn get_minter_info() -> MinterInfo {
             minimum_withdrawal_amount: Some(s.native_minimum_withdrawal_amount.into()),
             block_height: Some(s.block_height.into()),
             last_observed_block_number: s.last_observed_block_number.map(|n| n.into()),
-            eth_balance: Some(s.native_balance.native_balance().into()),
+            native_balance: Some(s.native_balance.native_balance().into()),
             last_gas_fee_estimate: s.last_transaction_price_estimate.as_ref().map(
                 |(timestamp, estimate)| GasFeeEstimate {
                     max_fee_per_gas: estimate.estimate_max_fee_per_gas().into(),
@@ -629,6 +629,7 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
                     from_address,
                     value,
                     principal,
+                    subaccount,
                 }) => EP::AcceptedDeposit {
                     transaction_hash: transaction_hash.to_string(),
                     block_number: block_number.into(),
@@ -636,6 +637,7 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
                     from_address: from_address.to_string(),
                     value: value.into(),
                     principal,
+                    subaccount: subaccount.map(|s| s.to_bytes()),
                 },
                 EventType::AcceptedErc20Deposit(ReceivedErc20Event {
                     transaction_hash,
@@ -645,6 +647,7 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
                     value,
                     principal,
                     erc20_contract_address,
+                    subaccount,
                 }) => EP::AcceptedErc20Deposit {
                     transaction_hash: transaction_hash.to_string(),
                     block_number: block_number.into(),
@@ -653,6 +656,7 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
                     value: value.into(),
                     principal,
                     erc20_contract_address: erc20_contract_address.to_string(),
+                    subaccount: subaccount.map(|s| s.to_bytes()),
                 },
                 EventType::InvalidDeposit {
                     event_source,

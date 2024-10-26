@@ -8,7 +8,7 @@ use crate::eth_types::Address;
 use crate::logs::{DEBUG, INFO};
 use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
 use crate::rpc_client::{MultiCallError, RpcClient};
-use crate::rpc_declrations::{FixedSizeData, Hash, LogEntry};
+use crate::rpc_declrations::{Data, FixedSizeData, Hash, LogEntry};
 use crate::state::read_state;
 use candid::Principal;
 use ic_canister_log::log;
@@ -29,6 +29,8 @@ pub struct ReceivedNativeEvent {
     pub value: Wei,
     #[cbor(n(5), with = "crate::cbor::principal")]
     pub principal: Principal,
+    #[n(6)]
+    pub subaccount: Option<LedgerSubaccount>,
 }
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
 pub struct ReceivedErc20Event {
@@ -46,6 +48,8 @@ pub struct ReceivedErc20Event {
     pub principal: Principal,
     #[n(6)]
     pub erc20_contract_address: Address,
+    #[n(7)]
+    pub subaccount: Option<LedgerSubaccount>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,6 +79,7 @@ impl fmt::Debug for ReceivedNativeEvent {
             .field("from_address", &self.from_address)
             .field("value", &self.value)
             .field("principal", &format_args!("{}", self.principal))
+            .field("subaccount", &self.subaccount)
             .finish()
     }
 }
@@ -89,6 +94,7 @@ impl fmt::Debug for ReceivedErc20Event {
             .field("value", &self.value)
             .field("principal", &format_args!("{}", self.principal))
             .field("contract_address", &self.erc20_contract_address)
+            .field("subaccount", &self.subaccount)
             .finish()
     }
 }
@@ -172,6 +178,19 @@ impl ReceivedDepositEvent {
         match self {
             ReceivedDepositEvent::Native(evt) => evt.value.into(),
             ReceivedDepositEvent::Erc20(evt) => evt.value.into(),
+        }
+    }
+
+    pub fn subaccount(&self) -> Option<[u8; 32]> {
+        match self {
+            ReceivedDepositEvent::Native(evt) => match &evt.subaccount {
+                Some(sub) => Some(sub.clone().to_bytes()),
+                None => None,
+            },
+            ReceivedDepositEvent::Erc20(evt) => match &evt.subaccount {
+                Some(sub) => Some(sub.clone().to_bytes()),
+                None => None,
+            },
         }
     }
 }
@@ -317,21 +336,29 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
                 })
             };
 
-        // We have only one non-indexed data field.
-        let user_address: [u8; 32] = entry.data.0.clone().try_into().map_err(|data| {
-            ReceivedDepsitEventError::InvalidEventSource {
+        if entry.topics.is_empty() {
+            return Err(ReceivedDepsitEventError::InvalidEventSource {
                 source: event_source,
-                error: EventSourceError::InvalidEvent(format!(
-                    "Invalid data length; expected 32-byte value, got {}",
-                    hex::encode(data)
-                )),
-            }
-        })?;
-
-        let from_address = parse_address(&user_address)?;
+                error: EventSourceError::InvalidEvent("Expected at least one topic".to_string()),
+            });
+        }
 
         // We have 4 indexed topics for all deposit events:
-        // (hash,Indexed contract_address of the token(in case of native token its 0x000000000000000000000000000), Indexed amount of token(value), Indexed principalId)
+        // The overal event is as follow :
+        // DepositLog(
+        //     address from_address,
+        //     address indexed token,
+        //     uint256 indexed amount,
+        //     bytes32 indexed principal,
+        //     bytes32 subaccount
+        // );
+        // Indexed topics are as follow
+        // (
+        //     Event Topic,
+        //     Indexed contract_address of the token(in case of native token its 0x000000000000000000000000000),
+        //     Indexed amount of token(value),
+        //     Indexed principalId
+        // );
         match entry.topics[0] {
             FixedSizeData(crate::state::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC) => {
                 if entry.topics.len() != 4 {
@@ -346,6 +373,16 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
                 let token_contract_address = parse_address(&entry.topics[1].0)?;
                 let principal = parse_principal(&entry.topics[3])?;
                 let value = &entry.topics[2];
+
+                // Non indexed data
+                // We have two non-indexed data field (from_address, subaccount).
+
+                let [from_address_bytes, subaccount_bytes] =
+                    parse_data_into_32_byte_words(entry.data, event_source)?;
+
+                let from_address = parse_address(&from_address_bytes)?;
+                let subaccount = LedgerSubaccount::from_bytes(subaccount_bytes);
+
                 match token_contract_address.is_native_token() {
                     true => Ok(ReceivedDepositEvent::Native(ReceivedNativeEvent {
                         transaction_hash,
@@ -354,6 +391,7 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
                         from_address,
                         value: Wei::from_be_bytes(value.0),
                         principal,
+                        subaccount,
                     })),
                     false => Ok(ReceivedDepositEvent::Erc20(ReceivedErc20Event {
                         transaction_hash,
@@ -363,6 +401,7 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
                         value: Erc20Value::from_be_bytes(value.0),
                         principal,
                         erc20_contract_address: token_contract_address,
+                        subaccount,
                     })),
                 }
             }
@@ -374,6 +413,54 @@ impl TryFrom<LogEntry> for ReceivedDepositEvent {
                 )),
             }),
         }
+    }
+}
+
+fn parse_data_into_32_byte_words<const N: usize>(
+    data: Data,
+    event_source: EventSource,
+) -> Result<[[u8; 32]; N], ReceivedDepsitEventError> {
+    let data = data.0;
+    if data.len() != 32 * N {
+        return Err(ReceivedDepsitEventError::InvalidEventSource {
+            source: event_source,
+            error: EventSourceError::InvalidEvent(format!(
+                "Expected {} bytes, got {}",
+                32 * N,
+                data.len()
+            )),
+        });
+    }
+    let mut result = Vec::with_capacity(N);
+    for chunk in data.chunks_exact(32) {
+        let mut word = [0; 32];
+        word.copy_from_slice(chunk);
+        result.push(word);
+    }
+    Ok(result.try_into().unwrap())
+}
+
+enum InternalLedgerSubaccountTag {}
+type InternalLedgerSubaccount = CheckedAmountOf<InternalLedgerSubaccountTag>;
+
+/// Ledger subaccount.
+///
+/// Internally represented as a u256 to optimize cbor encoding for low values,
+/// which can be represented as a u32 or a u64.
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Decode, Encode)]
+pub struct LedgerSubaccount(#[n(0)] InternalLedgerSubaccount);
+
+impl LedgerSubaccount {
+    pub fn from_bytes(bytes: [u8; 32]) -> Option<Self> {
+        const DEFAULT_SUBACCOUNT: [u8; 32] = [0; 32];
+        if bytes == DEFAULT_SUBACCOUNT {
+            return None;
+        }
+        Some(Self(InternalLedgerSubaccount::from_be_bytes(bytes)))
+    }
+
+    pub fn to_bytes(self) -> [u8; 32] {
+        self.0.to_be_bytes()
     }
 }
 
@@ -422,28 +509,4 @@ fn parse_principal_from_slice(slice: &[u8]) -> Result<Principal, String> {
         return Err("anonymous principal is not allowed".to_string());
     }
     Principal::try_from_slice(principal_bytes).map_err(|err| err.to_string())
-}
-
-enum InternalLedgerSubaccountTag {}
-type InternalLedgerSubaccount = CheckedAmountOf<InternalLedgerSubaccountTag>;
-
-/// Ledger subaccount.
-///
-/// Internally represented as a u256 to optimize cbor encoding for low values,
-/// which can be represented as a u32 or a u64.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Decode, Encode)]
-pub struct LedgerSubaccount(#[n(0)] InternalLedgerSubaccount);
-
-impl LedgerSubaccount {
-    pub fn from_bytes(bytes: [u8; 32]) -> Option<Self> {
-        const DEFAULT_SUBACCOUNT: [u8; 32] = [0; 32];
-        if bytes == DEFAULT_SUBACCOUNT {
-            return None;
-        }
-        Some(Self(InternalLedgerSubaccount::from_be_bytes(bytes)))
-    }
-
-    pub fn to_bytes(self) -> [u8; 32] {
-        self.0.to_be_bytes()
-    }
 }

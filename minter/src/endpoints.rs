@@ -70,7 +70,7 @@ pub struct MinterInfo {
     pub minimum_withdrawal_amount: Option<Nat>,
     pub block_height: Option<CandidBlockTag>,
     pub last_observed_block_number: Option<Nat>,
-    pub eth_balance: Option<Nat>,
+    pub native_balance: Option<Nat>,
     pub last_gas_fee_estimate: Option<GasFeeEstimate>,
     pub erc20_balances: Option<Vec<Erc20Balance>>,
     pub last_scraped_block_number: Option<Nat>,

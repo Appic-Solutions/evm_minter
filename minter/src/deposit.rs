@@ -2,6 +2,7 @@ use std::cmp::{min, Ordering};
 use std::time::Duration;
 
 use ic_canister_log::log;
+use icrc_ledger_types::icrc1::account::Account;
 use scopeguard::ScopeGuard;
 
 use crate::checked_amount::CheckedAmountOf;
@@ -68,7 +69,10 @@ async fn mint() {
         let block_index = match client
             .transfer(TransferArg {
                 from_subaccount: None,
-                to: (event.principal()).into(),
+                to: Account {
+                    owner: event.principal(),
+                    subaccount: event.subaccount(),
+                },
                 fee: None,
                 created_at_time: None,
                 memo: Some((&event).into()),

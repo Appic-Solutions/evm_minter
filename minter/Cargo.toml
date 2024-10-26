@@ -10,6 +10,7 @@ edition = "2021"
 evm_rpc_client = { path = "../evm_rpc_client" }
 askama = { version = "0.12.1", features = ["serde-json"] }
 candid = "0.10.6"
+ic-agent = "0.39.1"
 
 ic-canister-log = "0.2.0"
 ic-cdk = "0.16.0"
@@ -62,10 +63,11 @@ time = { version = "0.3.36", features = ["formatting"] }
 proptest="1.4.0"
 assert_matches = "1.5.0"
 maplit="1"
+flate2 = "1.0.34"
+tokio = { version = "1.41.0", features = ["full"] }
 rand = { version = "0.8.5", features = ["small_rng"] }
 [target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown"))'.dependencies]
 getrandom = { version = "0.2", features = ["custom"] }
-
 [target.'cfg(not(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown")))'.dependencies]
 getrandom = { version = "0.2" }
 hex = { version = "0.4.3", features = ["serde"] }

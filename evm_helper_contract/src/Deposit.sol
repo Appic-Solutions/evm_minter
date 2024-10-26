@@ -15,8 +15,8 @@ contract Deposit {
     mapping(address => uint256) public feeTank;
 
     // Event to log token deposits into the contract
-    event TokensLocked(
-        address user,
+    event DepositLog(
+        address from_address,
         address indexed token,
         uint256 indexed amount,
         bytes32 indexed principal,
@@ -54,7 +54,7 @@ contract Deposit {
                 revert("Transfer to minter failed!");
             }
 
-            emit TokensLocked(
+            emit DepositLog(
                 msg.sender,
                 address(0),
                 msg.value,
@@ -66,7 +66,7 @@ contract Deposit {
 
             tokenContract.safeTransferFrom(msg.sender, minterAddress, amount);
 
-            emit TokensLocked(msg.sender, token, amount, principal, subaccount);
+            emit DepositLog(msg.sender, token, amount, principal, subaccount);
         }
     }
 }

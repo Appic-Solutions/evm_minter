@@ -2,13 +2,14 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/deposit.sol";
+import "../src/Deposit.sol";
 
 contract DeployDeposit is Script {
     Deposit public deposit;
 
-    function run(address minter_address) public {
+    function run() public {
         uint256 pk = vm.envUint("PRIVATE_KEY");
+        address minter_address = vm.envAddress("MINTER_ADDRESS");
         console.log("Deploying Deposit contract with address", vm.addr(pk));
         vm.startBroadcast(pk);
         _deployDeposit(minter_address);

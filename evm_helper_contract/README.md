@@ -48,7 +48,7 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script --chain sepolia script/TokenLock.s.sol:DeployTokenLock --rpc-url $SEPOLIA_RPC_URL --broadcast --verify -vvvv
+$ forge script --chain sepolia script/Deposit.s.sol:DeployDeposit --rpc-url $SEPOLIA_RPC_URL --broadcast --verify -vvvv
 ```
 
 ### Cast

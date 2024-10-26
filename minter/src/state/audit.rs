@@ -1,12 +1,8 @@
-// #[cfg(test)]
-// mod tests;
-
 pub use super::event::{Event, EventType};
 use super::{
     transactions::{Reimbursed, ReimbursementIndex},
     State,
 };
-// use crate::state::transactions::{Reimbursed, ReimbursementIndex};
 use crate::storage::{record_event, with_event_iter};
 
 /// Updates the state to reflect the given state transition.
