@@ -12,14 +12,14 @@ contract MockERC20 is ERC20 {
 }
 
 contract TokenLockTest is Test {
-    TokenLock public tokenLock;
+    Deposit public deposit;
     MockERC20 public token;
     address public minter = address(1);
     address public user = address(2);
 
     function setUp() public {
         // Deploy the contract
-        tokenLock = new TokenLock(minter);
+        deposit = new Deposit(minter);
 
         // Deploy the mock token and assign balances
         token = new MockERC20("Mock Token", "MTKN");
@@ -34,12 +34,12 @@ contract TokenLockTest is Test {
         // Arrange
         uint256 amount = 100 * 10 ** token.decimals();
         vm.startPrank(user);
-        token.approve(address(tokenLock), amount);
+        token.approve(address(deposit), amount);
 
         // Act
         bytes32 principalId = "testPrincipalId";
         bytes32 subaccount = "TestSubaccount";
-        tokenLock.deposit(address(token), amount, principalId, subaccount);
+        deposit.deposit(address(token), amount, principalId, subaccount);
 
         // Assert
         assertEq(token.balanceOf(minter), amount);
@@ -50,12 +50,12 @@ contract TokenLockTest is Test {
         uint256 amount = 1 ether;
 
         // Act
-        bytes principalId = "testPrincipalId";
+        bytes32 principalId = "testPrincipalId";
         bytes32 subaccount = "TestSubaccount";
 
         vm.deal(user, amount);
         vm.prank(user);
-        tokenLock.deposit{value: amount}(
+        deposit.deposit{value: amount}(
             address(0),
             amount,
             principalId,
