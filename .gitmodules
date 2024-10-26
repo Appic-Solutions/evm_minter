@@ -4,3 +4,6 @@
 [submodule "EVM_CONTRACT/lib/openzeppelin-contracts"]
 	path = EVM_CONTRACT/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "evm_helper_contract/lib/openzeppelin-contracts"]
+	path = evm_helper_contract/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
