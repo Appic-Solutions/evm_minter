@@ -12,14 +12,14 @@ contract MockERC20 is ERC20 {
 }
 
 contract TokenLockTest is Test {
-    Deposit public deposit;
+    DepositHelper public deposit;
     MockERC20 public token;
     address public minter = address(1);
     address public user = address(2);
 
     function setUp() public {
         // Deploy the contract
-        deposit = new Deposit(minter);
+        deposit = new DepositHelper(minter);
 
         // Deploy the mock token and assign balances
         token = new MockERC20("Mock Token", "MTKN");

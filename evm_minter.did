@@ -49,6 +49,7 @@ type EventPayload = variant {
     transaction_hash : text;
     value : nat;
     log_index : nat;
+    subaccount : opt blob;
     block_number : nat;
     erc20_contract_address : text;
     from_address : text;
@@ -64,6 +65,7 @@ type EventPayload = variant {
     transaction_hash : text;
     value : nat;
     log_index : nat;
+    subaccount : opt blob;
     block_number : nat;
     from_address : text;
   };
@@ -135,6 +137,7 @@ type EvmNetwork = variant {
   Fantom;
   Base;
   Ethereum;
+  BSCTestnet;
   ArbitrumOne;
   Sepolia;
   Polygon;
@@ -185,7 +188,6 @@ type LedgerError = variant {
 type LogVisibility = variant { controllers; public };
 type MinterArg = variant { UpgradeArg : UpgradeArg; InitArg : InitArg };
 type MinterInfo = record {
-  eth_balance : opt nat;
   last_scraped_block_number : opt nat;
   last_observed_block_number : opt nat;
   supported_erc20_tokens : opt vec Erc20Token;
@@ -196,6 +198,7 @@ type MinterInfo = record {
   erc20_balances : opt vec Erc20Balance;
   minter_address : opt text;
   block_height : opt CandidBlockTag;
+  native_balance : opt nat;
 };
 type QueryStats = record {
   response_payload_bytes_total : nat;

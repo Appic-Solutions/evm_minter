@@ -30,7 +30,7 @@ mod get_deposit_logs {
     };
     use crate::eth_types::Address;
     use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
-    use crate::rpc_declrations::LogEntry;
+    use crate::rpc_declrations::{Hash, LogEntry};
     use candid::Principal;
     use ic_crypto_sha3::Keccak256;
     use std::str::FromStr;
@@ -80,7 +80,7 @@ mod get_deposit_logs {
         use crate::state::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC;
 
         //must match event signature in minter.sol
-        let event_signature = "event TokensLocked(address,address,uint256,bytes32)";
+        let event_signature = "DepositLog(address,address,uint256,bytes32,bytes32)";
 
         let topic = Keccak256::hash(event_signature);
         assert_eq!(topic, RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC)
@@ -96,7 +96,7 @@ mod get_deposit_logs {
                 "0x00000000000000000000000000000000000000000000000000005af3107a4000",
                 "0x09efcdab00000000000100000000000000000000000000000000000000000000"
             ],
-            "data": "0x000000000000000000000000baf59b045c6b53bcc849e2a487c14f234435cc51",
+            "data": "0x0000000000000000000000005d737f982696fe2fe4ef1c7584e914c3a8e44d540000000000000000000000000000000000000000000000000000000000000000",
             "blockNumber": "0x3ca487",
             "transactionHash": "0x705f826861c802b407843e99af986cfde8749b669e5e0a5a150f4350bcaa9bc3",
             "transactionIndex": "0x22",
@@ -113,7 +113,7 @@ mod get_deposit_logs {
                 .unwrap(),
             block_number: BlockNumber::new(3974279),
             log_index: LogIndex::from(39_u8),
-            from_address: "0xbAf59B045c6B53bCc849e2a487C14F234435cC51"
+            from_address: "0x5d737F982696Fe2fE4eF1c7584E914C3A8e44D54"
                 .parse()
                 .unwrap(),
             value: Wei::from(100_000_000_000_000_u128),
@@ -135,7 +135,7 @@ mod get_deposit_logs {
                 "0x00000000000000000000000000000000000000000000000000005af3107a4000",
                 "0x09efcdab00000000000100000000000000000000000000000000000000000000"
             ],
-            "data": "0x000000000000000000000000baf59b045c6b53bcc849e2a487c14f234435cc51ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "data": "0x0000000000000000000000005d737f982696fe2fe4ef1c7584e914c3a8e44d54ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "blockNumber": "0x698ab3",
             "transactionHash": "0x037305b461a7c69bf65d4e143262fc038b39d5e46da79de1539e3a90e91b9b37",
             "transactionIndex": "0x12",
@@ -152,7 +152,7 @@ mod get_deposit_logs {
                 .unwrap(),
             block_number: BlockNumber::new(6916787),
             log_index: LogIndex::from(20_u8),
-            from_address: "0xbAf59B045c6B53bCc849e2a487C14F234435cC51"
+            from_address: "0x5d737F982696Fe2fE4eF1c7584E914C3A8e44D54"
                 .parse()
                 .unwrap(),
             value: Wei::from(100_000_000_000_000_u128),
@@ -160,7 +160,7 @@ mod get_deposit_logs {
             subaccount: LedgerSubaccount::from_bytes([0xff; 32]),
         }
         .into();
-
+        let hash = hex::encode([0xff; 32]);
         assert_eq!(parsed_event, expected_event);
     }
 
@@ -174,7 +174,7 @@ mod get_deposit_logs {
                 "0x0000000000000000000000000000000000000000000000004563918244f40000",
                 "0x1d9facb184cbe453de4841b6b9d9cc95bfc065344e485789b550544529020000"
             ],
-            "data": "0x000000000000000000000000baf59b045c6b53bcc849e2a487c14f234435cc51",
+            "data": "0x0000000000000000000000005d737f982696fe2fe4ef1c7584e914c3a8e44d540000000000000000000000000000000000000000000000000000000000000000",
             "blockNumber": "0x5146a4",
             "transactionHash": "0x44d8e93a8f4bbc89ad35fc4fbbdb12cb597b4832da09c0b2300777be180fde87",
             "transactionIndex": "0x22",
@@ -191,7 +191,7 @@ mod get_deposit_logs {
                 .unwrap(),
             block_number: BlockNumber::new(5326500),
             log_index: LogIndex::from(39_u8),
-            from_address: "0xbAf59B045c6B53bCc849e2a487C14F234435cC51"
+            from_address: "0x5d737F982696Fe2fE4eF1c7584E914C3A8e44D54"
                 .parse()
                 .unwrap(),
             value: Erc20Value::from(5_000_000_000_000_000_000_u128),
@@ -219,7 +219,7 @@ mod get_deposit_logs {
                 "0x00000000000000000000000000000000000000000000000000005af3107a4000",
                 "0x09efcdab00000000000100000000000000000000000000000000000000000000"
             ],
-            "data": "0x000000000000000000000000baf59b045c6b53bcc849e2a487c14f234435cc51ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "data": "0x0000000000000000000000005d737f982696fe2fe4ef1c7584e914c3a8e44d54ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "blockNumber": "0x698adb",
             "transactionHash": "0xf353e17cbcfea236a8b03d2d800205074e1f5014a3ce0f6dedcf128addb6bea4",
             "transactionIndex": "0x15",
@@ -236,14 +236,11 @@ mod get_deposit_logs {
                 .unwrap(),
             block_number: BlockNumber::new(6916827),
             log_index: LogIndex::from(69_u8),
-            from_address: "0xbAf59B045c6B53bCc849e2a487C14F234435cC51"
+            from_address: "0x5d737F982696Fe2fE4eF1c7584E914C3A8e44D54"
                 .parse()
                 .unwrap(),
-            value: Erc20Value::from(5_000_000_000_000_000_000_u128),
-            principal: Principal::from_str(
-                "hkroy-sm7vs-yyjs7-ekppe-qqnwx-hm4zf-n7ybs-titsi-k6e3k-ucuiu-uqe",
-            )
-            .unwrap(),
+            value: Erc20Value::from(100_000_000_000_000_u128),
+            principal: Principal::from_str("2chl6-4hpzw-vqaaa-aaaaa-c").unwrap(),
             erc20_contract_address: "0x779877a7b0d9e8603169ddbd7836e478b4624789"
                 .parse()
                 .unwrap(),
@@ -265,7 +262,7 @@ mod get_deposit_logs {
                 "0x0000000000000000000000000000000000000000000000004563918244f40000",
                 "0x09efcdab00000000000100000000000000000000000000000000000000000000"
             ],
-            "data": "0x000000000000000000000000baf59b045c6b53bcc849e2a487c14f234435cc51",
+            "data": "0x0000000000000000000000005d737f982696fe2fe4ef1c7584e914c3a8e44d54ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "blockNumber": "0x3ca487",
             "transactionHash": "0x705f826861c802b407843e99af986cfde8749b669e5e0a5a150f4350bcaa9bc3",
             "transactionIndex": "0x22",

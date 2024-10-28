@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @title Token Locking Smart Contract
  * @notice This contract allows users to lock their tokens, with the contract owner having the exclusive right to withdraw the locked tokens.
  */
-contract Deposit {
+contract DepositHelper {
     using SafeERC20 for IERC20;
 
     address payable private immutable minterAddress;
