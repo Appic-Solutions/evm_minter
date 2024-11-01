@@ -42,9 +42,6 @@ thread_local! {
     pub static STATE:RefCell<Option<State>>=RefCell::default();
 }
 
-pub(crate) const RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC: [u8; 32] =
-    hex!("deaddf8708b62ae1bf8ec4693b523254aa961b2da6bc5be57f3188ee784d6275");
-
 pub const MAIN_DERIVATION_PATH: Vec<ByteBuf> = vec![];
 
 #[derive(Debug, Eq, PartialEq, Clone)]

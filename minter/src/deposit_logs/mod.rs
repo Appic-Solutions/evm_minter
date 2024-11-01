@@ -1,6 +1,10 @@
 #[cfg(test)]
 mod test;
 
+mod parser;
+mod scraping;
+pub use parser::{LogParser, ReceivedDepositLogParser};
+pub use scraping::{LogScraping, ReceivedDepositLogScraping};
 use std::fmt;
 
 use crate::checked_amount::CheckedAmountOf;
@@ -14,6 +18,11 @@ use candid::Principal;
 use ic_canister_log::log;
 use minicbor::{Decode, Encode};
 use thiserror::Error;
+
+use hex_literal::hex;
+
+pub(crate) const RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC: [u8; 32] =
+    hex!("deaddf8708b62ae1bf8ec4693b523254aa961b2da6bc5be57f3188ee784d6275");
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
 pub struct ReceivedNativeEvent {
@@ -227,217 +236,6 @@ pub fn report_transaction_error(error: ReceivedDepsitEventError) {
             );
         }
     }
-}
-
-// Fetches deposit logs by creating an instance of RPClient from state
-// and calling the get_logs function
-pub async fn last_received_deposit_events(
-    topic: &[u8; 32],
-    contract_address: Address,
-    token_contract_addresses: &[Address],
-    from: BlockNumber,
-    to: BlockNumber,
-) -> Result<(Vec<ReceivedDepositEvent>, Vec<ReceivedDepsitEventError>), MultiCallError<Vec<LogEntry>>>
-{
-    use crate::rpc_declrations::GetLogsParam;
-
-    if from > to {
-        ic_cdk::trap(&format!(
-            "BUG: invalid block range. {:?} should not be greater than {:?}",
-            from, to
-        ));
-    }
-    let mut topics: Vec<_> = vec![FixedSizeData(*topic).into()];
-    // We add token contract addresses as additional topics to match.
-    // It has a disjunction semantics, so it will match if event matches any one of these addresses.
-    if !token_contract_addresses.is_empty() {
-        topics.push(
-            token_contract_addresses
-                .iter()
-                .map(|address| FixedSizeData(address.into()))
-                .collect::<Vec<_>>()
-                .into(),
-        )
-    }
-
-    let result = read_state(RpcClient::from_state_all_providers)
-        .get_logs(GetLogsParam {
-            from_block: from.into(),
-            to_block: to.into(),
-            address: vec![contract_address],
-            topics,
-        })
-        .await?;
-
-    let (ok, not_ok): (Vec<_>, Vec<_>) = result
-        .into_iter()
-        .map(ReceivedDepositEvent::try_from)
-        .partition(Result::is_ok);
-    let valid_transactions: Vec<ReceivedDepositEvent> =
-        ok.into_iter().map(Result::unwrap).collect();
-    let errors: Vec<ReceivedDepsitEventError> =
-        not_ok.into_iter().map(Result::unwrap_err).collect();
-    Ok((valid_transactions, errors))
-}
-
-// Converts LogEntry to ReceivedDepsitEvent
-impl TryFrom<LogEntry> for ReceivedDepositEvent {
-    type Error = ReceivedDepsitEventError;
-
-    fn try_from(entry: LogEntry) -> Result<Self, Self::Error> {
-        let _block_hash = entry
-            .block_hash
-            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
-        let block_number = entry
-            .block_number
-            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
-        let transaction_hash = entry
-            .transaction_hash
-            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
-        let _transaction_index = entry
-            .transaction_index
-            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
-        let log_index = entry
-            .log_index
-            .ok_or(ReceivedDepsitEventError::PendingLogEntry)?;
-        let event_source = EventSource {
-            transaction_hash,
-            log_index,
-        };
-
-        if entry.removed {
-            return Err(ReceivedDepsitEventError::InvalidEventSource {
-                source: event_source,
-                error: EventSourceError::InvalidEvent(
-                    "this event has been removed from the chain".to_string(),
-                ),
-            });
-        }
-
-        let parse_address = |address: &[u8; 32]| -> Result<Address, ReceivedDepsitEventError> {
-            Address::try_from(address).map_err(|err| ReceivedDepsitEventError::InvalidEventSource {
-                source: event_source,
-                error: EventSourceError::InvalidEvent(format!(
-                    "Invalid address in log entry: {}",
-                    err
-                )),
-            })
-        };
-
-        let parse_principal =
-            |principal: &FixedSizeData| -> Result<Principal, ReceivedDepsitEventError> {
-                parse_principal_from_slice(&principal.0).map_err(|_err| {
-                    ReceivedDepsitEventError::InvalidEventSource {
-                        source: event_source,
-                        error: EventSourceError::InvalidPrincipal {
-                            invalid_principal: principal.clone(),
-                        },
-                    }
-                })
-            };
-
-        if entry.topics.is_empty() {
-            return Err(ReceivedDepsitEventError::InvalidEventSource {
-                source: event_source,
-                error: EventSourceError::InvalidEvent("Expected at least one topic".to_string()),
-            });
-        }
-
-        // We have 4 indexed topics for all deposit events:
-        // The overal event is as follow :
-        // DepositLog(
-        //     address from_address,
-        //     address indexed token,
-        //     uint256 indexed amount,
-        //     bytes32 indexed principal,
-        //     bytes32 subaccount
-        // );
-        // Indexed topics are as follow
-        // (
-        //     Event Topic,
-        //     Indexed contract_address of the token(in case of native token its 0x000000000000000000000000000),
-        //     Indexed amount of token(value),
-        //     Indexed principalId
-        // );
-        match entry.topics[0] {
-            FixedSizeData(crate::state::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC) => {
-                if entry.topics.len() != 4 {
-                    return Err(ReceivedDepsitEventError::InvalidEventSource {
-                        source: event_source,
-                        error: EventSourceError::InvalidEvent(format!(
-                            "Expected 4 topics for ReceivedDepositEvnet event, got {}",
-                            entry.topics.len()
-                        )),
-                    });
-                };
-                let token_contract_address = parse_address(&entry.topics[1].0)?;
-                let principal = parse_principal(&entry.topics[3])?;
-                let value = &entry.topics[2];
-
-                // Non indexed data
-                // We have two non-indexed data field (from_address, subaccount).
-
-                let [from_address_bytes, subaccount_bytes] =
-                    parse_data_into_32_byte_words(entry.data, event_source)?;
-
-                let from_address = parse_address(&from_address_bytes)?;
-                let subaccount = LedgerSubaccount::from_bytes(subaccount_bytes);
-
-                match token_contract_address.is_native_token() {
-                    true => Ok(ReceivedDepositEvent::Native(ReceivedNativeEvent {
-                        transaction_hash,
-                        block_number,
-                        log_index,
-                        from_address,
-                        value: Wei::from_be_bytes(value.0),
-                        principal,
-                        subaccount,
-                    })),
-                    false => Ok(ReceivedDepositEvent::Erc20(ReceivedErc20Event {
-                        transaction_hash,
-                        block_number,
-                        log_index,
-                        from_address,
-                        value: Erc20Value::from_be_bytes(value.0),
-                        principal,
-                        erc20_contract_address: token_contract_address,
-                        subaccount,
-                    })),
-                }
-            }
-            _ => Err(ReceivedDepsitEventError::InvalidEventSource {
-                source: event_source,
-                error: EventSourceError::InvalidEvent(format!(
-                    "Expected either ReceivedEth or ReceivedERC20 topics, got {}",
-                    entry.topics[0]
-                )),
-            }),
-        }
-    }
-}
-
-fn parse_data_into_32_byte_words<const N: usize>(
-    data: Data,
-    event_source: EventSource,
-) -> Result<[[u8; 32]; N], ReceivedDepsitEventError> {
-    let data = data.0;
-    if data.len() != 32 * N {
-        return Err(ReceivedDepsitEventError::InvalidEventSource {
-            source: event_source,
-            error: EventSourceError::InvalidEvent(format!(
-                "Expected {} bytes, got {}",
-                32 * N,
-                data.len()
-            )),
-        });
-    }
-    let mut result = Vec::with_capacity(N);
-    for chunk in data.chunks_exact(32) {
-        let mut word = [0; 32];
-        word.copy_from_slice(chunk);
-        result.push(word);
-    }
-    Ok(result.try_into().unwrap())
 }
 
 enum InternalLedgerSubaccountTag {}
