@@ -2,21 +2,19 @@ use crate::deposit_logs::{
     parse_principal_from_slice, EventSource, EventSourceError, LedgerSubaccount,
     ReceivedDepositEvent, ReceivedDepsitEventError, ReceivedErc20Event, ReceivedNativeEvent,
 };
-use hex_literal::hex;
 
 use crate::eth_types::Address;
 use crate::numeric::{BlockNumber, Erc20Value, Wei};
 use crate::rpc_declrations::{Data, FixedSizeData, LogEntry};
 use candid::Principal;
 
-pub(crate) const RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC: [u8; 32] =
-    hex!("deaddf8708b62ae1bf8ec4693b523254aa961b2da6bc5be57f3188ee784d6275");
+use super::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC;
 
-/// Parse an Ethereum log event into a `ReceivedEvent`.
+/// Parse an deposit log event into a `ReceivedDepositEvent`.
 pub trait LogParser {
     fn parse_log(log: LogEntry) -> Result<ReceivedDepositEvent, ReceivedDepsitEventError>;
 
-    /// Parse a list of Ethereum log events into a list of `ReceivedEvent`s and a list of errors.
+    /// Parse a list of deposit logs events into a list of `ReceivedDepositEvent`s and a list of errors.
     ///
     /// All logs are parsed, even if some of them are invalid.
     fn parse_all_logs(
