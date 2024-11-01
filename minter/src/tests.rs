@@ -23,10 +23,10 @@ fn deserialize_block_spec() {
         serde_json::from_str("\"finalized\"").unwrap()
     );
 }
-// TODO:Fix tests for aount as well as subaccount + fix deposit evnet topic
 mod get_deposit_logs {
     use crate::deposit_logs::{
-        LedgerSubaccount, ReceivedDepositEvent, ReceivedErc20Event, ReceivedNativeEvent,
+        LedgerSubaccount, LogParser, ReceivedDepositLogParser, ReceivedErc20Event,
+        ReceivedNativeEvent,
     };
     use crate::eth_types::Address;
     use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
@@ -77,7 +77,7 @@ mod get_deposit_logs {
 
     #[test]
     fn should_have_correct_topic() {
-        use crate::state::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC;
+        use crate::deposit_logs::RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC;
 
         //must match event signature in minter.sol
         let event_signature = "DepositLog(address,address,uint256,bytes32,bytes32)";
@@ -105,7 +105,7 @@ mod get_deposit_logs {
             "removed": false
         }"#;
         let parsed_event =
-            ReceivedDepositEvent::try_from(serde_json::from_str::<LogEntry>(event).unwrap())
+            ReceivedDepositLogParser::parse_log(serde_json::from_str::<LogEntry>(event).unwrap())
                 .unwrap();
         let expected_event = ReceivedNativeEvent {
             transaction_hash: "0x705f826861c802b407843e99af986cfde8749b669e5e0a5a150f4350bcaa9bc3"
@@ -144,7 +144,7 @@ mod get_deposit_logs {
             "removed": false
         }"#;
         let parsed_event =
-            ReceivedDepositEvent::try_from(serde_json::from_str::<LogEntry>(event).unwrap())
+            ReceivedDepositLogParser::parse_log(serde_json::from_str::<LogEntry>(event).unwrap())
                 .unwrap();
         let expected_event = ReceivedNativeEvent {
             transaction_hash: "0x037305b461a7c69bf65d4e143262fc038b39d5e46da79de1539e3a90e91b9b37"
@@ -183,7 +183,7 @@ mod get_deposit_logs {
             "removed": false
         }"#;
         let parsed_event =
-            ReceivedDepositEvent::try_from(serde_json::from_str::<LogEntry>(event).unwrap())
+            ReceivedDepositLogParser::parse_log(serde_json::from_str::<LogEntry>(event).unwrap())
                 .unwrap();
         let expected_event = ReceivedErc20Event {
             transaction_hash: "0x44d8e93a8f4bbc89ad35fc4fbbdb12cb597b4832da09c0b2300777be180fde87"
@@ -228,7 +228,7 @@ mod get_deposit_logs {
             "removed": false
         }"#;
         let parsed_event =
-            ReceivedDepositEvent::try_from(serde_json::from_str::<LogEntry>(event).unwrap())
+            ReceivedDepositLogParser::parse_log(serde_json::from_str::<LogEntry>(event).unwrap())
                 .unwrap();
         let expected_event = ReceivedErc20Event {
             transaction_hash: "0xf353e17cbcfea236a8b03d2d800205074e1f5014a3ce0f6dedcf128addb6bea4"
@@ -272,7 +272,7 @@ mod get_deposit_logs {
         }"#;
 
         let parsed_event =
-            ReceivedDepositEvent::try_from(serde_json::from_str::<LogEntry>(event).unwrap());
+            ReceivedDepositLogParser::parse_log(serde_json::from_str::<LogEntry>(event).unwrap());
         let expected_error = Err(ReceivedDepsitEventError::InvalidEventSource {
             source: EventSource {
                 transaction_hash:

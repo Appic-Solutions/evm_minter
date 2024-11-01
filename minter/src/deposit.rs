@@ -25,6 +25,7 @@ use crate::rpc_declrations::{BlockSpec, GetLogsParam};
 use crate::state::audit::{process_event, EventType};
 use crate::state::{mutate_state, read_state, State, TaskType};
 use num_traits::ToPrimitive;
+
 async fn mint() {
     use icrc_ledger_client_cdk::{CdkRuntime, ICRC1Client};
     use icrc_ledger_types::icrc1::transfer::TransferArg;

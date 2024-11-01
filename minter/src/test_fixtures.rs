@@ -27,6 +27,7 @@ pub fn expect_panic_with_message<F: FnOnce() -> R, R: std::fmt::Debug>(
 pub mod arb {
     use crate::checked_amount::CheckedAmountOf;
     use crate::eth_types::Address;
+    use crate::numeric::BlockRangeInclusive;
     use crate::rpc_declrations::{
         Block, Data, FeeHistory, FixedSizeData, Hash, LogEntry, TransactionReceipt,
         TransactionStatus,
@@ -44,6 +45,11 @@ pub mod arb {
         prelude::{any, Just, Strategy},
         prop_oneof,
     };
+
+    pub fn arb_block_range_inclusive() -> impl Strategy<Value = BlockRangeInclusive> {
+        (arb_checked_amount_of(), arb_checked_amount_of())
+            .prop_map(|(start, end)| BlockRangeInclusive::new(start, end))
+    }
 
     pub fn arb_checked_amount_of<Unit>() -> impl Strategy<Value = CheckedAmountOf<Unit>> {
         use proptest::arbitrary::any;
