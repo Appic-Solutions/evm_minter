@@ -1,4 +1,10 @@
 {
+  "ledger": {
+    "ic": "n44gr-qyaaa-aaaam-qbuha-cai"
+  },
+  "index": {
+    "ic": "eysav-tyaaa-aaaap-akqfq-cai"
+  },
   "evm_test": {
     "ic": "2ztvj-yaaaa-aaaap-ahiza-cai"
   }

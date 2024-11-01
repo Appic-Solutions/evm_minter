@@ -1,0 +1,38 @@
+{
+  "canisters": {
+    "evm_test": {
+      "candid": "../../evm_minter.did",
+      "package": "evm_minter",
+      "type": "custom",
+      "wasm": "../../target/wasm32-unknown-unknown/release/evm_minter.wasm",
+      "shrink": false,
+      "build": ["make build --directory=../../ "],
+      "init_arg_file": "init.did",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    },
+    "ledger": {
+      "type": "custom",
+      "wasm": "../../wasm/ledger_canister_u256.raw.wasm",
+      "candid": "../../did/ledger.did",
+      "shrink": false
+    },
+    "index": {
+      "type": "custom",
+      "wasm": "../../wasm/index_ng_canister_u256.raw.wasm",
+      "candid": "../../did/index-ng.did",
+      "shrink": false
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

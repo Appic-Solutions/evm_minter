@@ -15,7 +15,6 @@ pub trait LogParser {
     fn parse_log(log: LogEntry) -> Result<ReceivedDepositEvent, ReceivedDepsitEventError>;
 
     /// Parse a list of deposit logs events into a list of `ReceivedDepositEvent`s and a list of errors.
-    ///
     /// All logs are parsed, even if some of them are invalid.
     fn parse_all_logs(
         logs: Vec<LogEntry>,
