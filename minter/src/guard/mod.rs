@@ -53,7 +53,21 @@ impl<PR: RequestsGuardedByPrincipal> Guard<PR> {
             if PR::pending_requests_count(s) >= MAX_PENDING {
                 return Err(GuardError::TooManyPendingRequests);
             }
+
+            match s.swap_canister_id {
+                Some(swap_canister_id) => {
+                    if principal == swap_canister_id {
+                        return Ok(Self {
+                            principal,
+                            _marker: PhantomData,
+                        });
+                    }
+                }
+                None => {}
+            }
+
             let principals = PR::guarded_principals(s);
+
             if principals.contains(&principal) {
                 return Err(GuardError::AlreadyProcessing);
             }
