@@ -17,7 +17,7 @@ use evm_minter::erc20::ERC20Token;
 use evm_minter::guard::retrieve_withdraw_guard;
 use evm_minter::ledger_client::{LedgerBurnError, LedgerClient};
 use evm_minter::lifecycle::MinterArg;
-use evm_minter::logs::INFO;
+use evm_minter::logs::{DEBUG, INFO};
 use evm_minter::lsm_client::LSMClient;
 use evm_minter::memo::BurnMemo;
 use evm_minter::numeric::{BlockNumber, Erc20Value, LedgerBurnIndex, Wei};
@@ -94,7 +94,7 @@ async fn init(arg: MinterArg) {
             // Call ledger_suite_manager to add the native twin token
             let lsm_client = LSMClient::new(init_arg.ledger_suite_manager_id);
 
-            let add_native_ls_result = lsm_client.call_lsm_to_add_twin_native(inti_args).await;
+            let add_native_ls_result = lsm_client.call_lsm_to_add_twin_native(init_arg).await;
             match add_native_ls_result {
                 Ok(()) => {
                     log!(INFO, "[init]: Added native ls to lsm cansiter");

@@ -11,7 +11,6 @@ use crate::{lifecycle::InitArg, logs::DEBUG, management::CallError};
 use candid::{self, CandidType, Nat, Principal};
 use ic_canister_log::log;
 use ic_cdk;
-use num_traits::Inv;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_bytes::ByteArray;
 
