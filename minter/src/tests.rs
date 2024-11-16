@@ -30,7 +30,7 @@ mod get_deposit_logs {
     };
     use crate::eth_types::Address;
     use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
-    use crate::rpc_declrations::{Hash, LogEntry};
+    use crate::rpc_declrations::LogEntry;
     use candid::Principal;
     use ic_crypto_sha3::Keccak256;
     use std::str::FromStr;
@@ -160,7 +160,6 @@ mod get_deposit_logs {
             subaccount: LedgerSubaccount::from_bytes([0xff; 32]),
         }
         .into();
-        let hash = hex::encode([0xff; 32]);
         assert_eq!(parsed_event, expected_event);
     }
 

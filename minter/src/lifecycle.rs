@@ -25,20 +25,24 @@ pub struct InitArg {
     pub helper_contract_address: Option<String>,
     #[cbor(n(3), with = "crate::cbor::principal")]
     pub native_ledger_id: Principal,
-    #[n(4)]
-    pub native_symbol: String,
+    #[cbor(n(4), with = "crate::cbor::principal")]
+    pub native_index_id: Principal,
     #[n(5)]
+    pub native_symbol: String,
+    #[n(6)]
     pub block_height: CandidBlockTag,
-    #[cbor(n(6), with = "crate::cbor::nat")]
-    pub native_minimum_withdrawal_amount: Nat,
     #[cbor(n(7), with = "crate::cbor::nat")]
-    pub native_ledger_transfer_fee: Nat,
+    pub native_minimum_withdrawal_amount: Nat,
     #[cbor(n(8), with = "crate::cbor::nat")]
-    pub next_transaction_nonce: Nat,
+    pub native_ledger_transfer_fee: Nat,
     #[cbor(n(9), with = "crate::cbor::nat")]
-    pub last_scraped_block_number: Nat,
+    pub next_transaction_nonce: Nat,
     #[cbor(n(10), with = "crate::cbor::nat")]
+    pub last_scraped_block_number: Nat,
+    #[cbor(n(11), with = "crate::cbor::nat")]
     pub min_max_priority_fee_per_gas: Nat,
+    #[cbor(n(12), with = "crate::cbor::principal")]
+    pub ledger_suite_manager_id: Principal,
 }
 
 impl TryFrom<InitArg> for State {
@@ -49,6 +53,7 @@ impl TryFrom<InitArg> for State {
             ecdsa_key_name,
             helper_contract_address,
             native_ledger_id,
+            native_index_id: _,
             native_symbol,
             block_height,
             native_minimum_withdrawal_amount,
@@ -56,6 +61,7 @@ impl TryFrom<InitArg> for State {
             next_transaction_nonce,
             last_scraped_block_number,
             min_max_priority_fee_per_gas,
+            ledger_suite_manager_id,
         }: InitArg,
     ) -> Result<Self, Self::Error> {
         use std::str::FromStr;
@@ -93,6 +99,7 @@ impl TryFrom<InitArg> for State {
                         "ERROR: last_scraped_block_number is at maximum value".to_string(),
                     )
                 })?;
+
         let state = Self {
             evm_network,
             ecdsa_key_name,
@@ -115,7 +122,7 @@ impl TryFrom<InitArg> for State {
             skipped_blocks: Default::default(),
             active_tasks: Default::default(),
             last_transaction_price_estimate: None,
-            ledger_suite_manager_id: None,
+            ledger_suite_manager_id: Some(ledger_suite_manager_id),
             erc20_tokens: Default::default(),
             erc20_balances: Default::default(),
             evm_canister_id: Principal::from_slice(&[0_u8, 0, 0, 0, 2, 48, 0, 204, 1, 1]),

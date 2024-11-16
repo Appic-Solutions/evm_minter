@@ -3,10 +3,9 @@ mod tests;
 
 pub mod providers;
 use providers::{get_one_provider, get_providers};
-use std::{collections::BTreeMap, convert::Infallible, fmt::Display, str::FromStr};
+use std::{collections::BTreeMap, convert::Infallible, fmt::Display};
 
 use crate::{
-    checked_amount::CheckedAmountOf,
     eth_types::Address,
     evm_config::EvmNetwork,
     logs::{PrintProxySink, INFO, TRACE_HTTP},

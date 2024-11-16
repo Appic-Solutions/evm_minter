@@ -1,13 +1,10 @@
-use std::cmp::{min, Ordering};
 use std::collections::VecDeque;
 use std::time::Duration;
 
-use evm_rpc_types::HttpOutcallError;
 use ic_canister_log::log;
 use icrc_ledger_types::icrc1::account::Account;
 use scopeguard::ScopeGuard;
 
-use crate::checked_amount::CheckedAmountOf;
 use crate::deposit_logs::{
     report_transaction_error, ReceivedDepositEvent, ReceivedDepsitEventError,
 };
@@ -17,7 +14,7 @@ use crate::eth_types::Address;
 use crate::evm_config::EvmNetwork;
 use crate::guard::TimerGuard;
 use crate::logs::{DEBUG, INFO};
-use crate::numeric::{BlockNumber, BlockNumberTag, BlockRangeInclusive, LedgerMintIndex};
+use crate::numeric::{BlockNumber, BlockRangeInclusive, LedgerMintIndex};
 use crate::rpc_client::{is_response_too_large, MultiCallError, RpcClient};
 use crate::rpc_declrations::LogEntry;
 use crate::rpc_declrations::Topic;
@@ -35,7 +32,8 @@ async fn mint() {
         Err(_) => return,
     };
 
-    let (eth_ledger_canister_id, events) = read_state(|s| (s.native_ledger_id, s.events_to_mint()));
+    let (native_ledger_canister_id, events) =
+        read_state(|s| (s.native_ledger_id, s.events_to_mint()));
     let mut error_count = 0;
 
     for event in events {
@@ -52,7 +50,7 @@ async fn mint() {
             });
         });
         let (token_symbol, ledger_canister_id) = match &event {
-            ReceivedDepositEvent::Native(_) => ("Native".to_string(), eth_ledger_canister_id),
+            ReceivedDepositEvent::Native(_) => ("Native".to_string(), native_ledger_canister_id),
             ReceivedDepositEvent::Erc20(event) => {
                 if let Some(result) = read_state(|s| {
                     s.erc20_tokens

@@ -11,7 +11,6 @@ use std::{
 };
 
 use candid::Principal;
-use hex_literal::hex;
 use ic_canister_log::log;
 use ic_crypto_secp256k1::PublicKey;
 use serde_bytes::ByteBuf;

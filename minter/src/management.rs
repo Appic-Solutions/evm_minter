@@ -10,8 +10,8 @@ use std::fmt;
 /// `sign_with_ecdsa`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallError {
-    method: String,
-    reason: Reason,
+    pub method: String,
+    pub reason: Reason,
 }
 
 impl CallError {
@@ -67,7 +67,7 @@ impl fmt::Display for Reason {
 }
 
 impl Reason {
-    fn from_reject(reject_code: RejectionCode, reject_message: String) -> Self {
+    pub fn from_reject(reject_code: RejectionCode, reject_message: String) -> Self {
         match reject_code {
             RejectionCode::SysTransient => Self::TransientInternalError(reject_message),
             RejectionCode::CanisterError => Self::CanisterError(reject_message),

@@ -772,9 +772,8 @@ mod evm_rpc_conversion {
     use crate::rpc_client::{Block, LogEntry, MultiCallError, Reduce, ReducedResult};
     use crate::rpc_declrations::{FeeHistory, TransactionStatus};
     use crate::test_fixtures::arb::{
-        arb_address, arb_block, arb_checked_amount_of, arb_data, arb_evm_rpc_error,
-        arb_fee_history, arb_hex, arb_hex20, arb_hex256, arb_hex32, arb_hex_byte, arb_log_entry,
-        arb_nat_256, arb_transaction_receipt,
+        arb_block, arb_evm_rpc_error, arb_hex, arb_hex20, arb_hex256, arb_hex32, arb_hex_byte,
+        arb_log_entry, arb_nat_256, arb_transaction_receipt,
     };
 
     use evm_rpc_types::{

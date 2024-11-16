@@ -18,6 +18,7 @@ use evm_minter::guard::retrieve_withdraw_guard;
 use evm_minter::ledger_client::{LedgerBurnError, LedgerClient};
 use evm_minter::lifecycle::MinterArg;
 use evm_minter::logs::INFO;
+use evm_minter::lsm_client::LSMClient;
 use evm_minter::memo::BurnMemo;
 use evm_minter::numeric::{BlockNumber, Erc20Value, LedgerBurnIndex, Wei};
 use evm_minter::rpc_client::providers::Provider;
@@ -79,16 +80,37 @@ fn setup_timers() {
 }
 
 #[init]
-fn init(arg: MinterArg) {
+async fn init(arg: MinterArg) {
     match arg {
         MinterArg::InitArg(init_arg) => {
             log!(INFO, "[init]: initialized minter with arg: {:?}", init_arg);
             STATE.with(|cell| {
                 storage::record_event(EventType::Init(init_arg.clone()));
-                *cell.borrow_mut() =
-                    Some(State::try_from(init_arg).expect("BUG: failed to initialize minter"))
+                *cell.borrow_mut() = Some(
+                    State::try_from(init_arg.clone()).expect("BUG: failed to initialize minter"),
+                )
             });
+
+            // Call ledger_suite_manager to add the native twin token
+            let lsm_client = LSMClient::new(init_arg.ledger_suite_manager_id);
+
+            let add_native_ls_result = lsm_client.call_lsm_to_add_twin_native(inti_args).await;
+            match add_native_ls_result {
+                Ok(()) => {
+                    log!(INFO, "[init]: Added native ls to lsm cansiter");
+                }
+
+                Err(e) => {
+                    log!(
+                        DEBUG,
+                        "Failed to init casniter due to failed call to lsm.{:?}",
+                        e
+                    );
+                    ic_cdk::trap("Failed to init casniter due to failed call to lsm.");
+                }
+            }
         }
+
         MinterArg::UpgradeArg(_) => {
             ic_cdk::trap("cannot init canister state with upgrade args");
         }

@@ -13,6 +13,7 @@ pub mod guard;
 pub mod ledger_client;
 pub mod lifecycle;
 pub mod logs;
+pub mod lsm;
 pub mod management;
 pub mod map;
 pub mod memo;

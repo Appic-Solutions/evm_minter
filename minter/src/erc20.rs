@@ -1,17 +1,10 @@
-// #[cfg(test)]
-// pub mod test_fixtures;
-// #[cfg(test)]
-// mod tests;
-
 use crate::endpoints::AddErc20Token;
 use crate::eth_types::Address;
 use crate::evm_config::EvmNetwork;
 
 use candid::Principal;
-use ic_stable_structures::Storable;
 use minicbor::{Decode, Encode};
 use num_traits::ToPrimitive;
-use std::borrow::Cow;
 use std::fmt::Display;
 use std::str::FromStr;
 

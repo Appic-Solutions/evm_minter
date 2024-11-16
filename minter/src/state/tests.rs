@@ -37,6 +37,8 @@ fn initial_state() -> State {
         helper_contract_address: None,
         native_ledger_id: Principal::from_text("apia6-jaaaa-aaaar-qabma-cai")
             .expect("BUG: invalid principal"),
+        native_index_id: Principal::from_text("npoa7-loaaa-abbar-vbbna-cai")
+            .expect("BUG: invalid principal"),
         block_height: Default::default(),
         native_minimum_withdrawal_amount: wei_from_milli_ether(20).into(),
         next_transaction_nonce: Default::default(),
@@ -44,6 +46,8 @@ fn initial_state() -> State {
         native_symbol: "icMatic".to_string(),
         native_ledger_transfer_fee: wei_from_milli_ether(10).into(),
         min_max_priority_fee_per_gas: Wei::new(15000).into(),
+        ledger_suite_manager_id: Principal::from_text("aafa6-jbbbb-aaaar-qabma-cai")
+            .expect("BUG: invalid principal"),
     })
     .expect("init args should be valid")
 }
@@ -553,24 +557,29 @@ prop_compose! {
         native_minimum_withdrawal_amount in arb_nat(),
         next_transaction_nonce in arb_nat(),
         native_ledger_id in arb_principal(),
+        native_index_id in arb_principal(),
         ecdsa_key_name in "[a-z_]*",
         last_scraped_block_number in arb_nat(),
         min_max_priority_fee_per_gas in arb_nat(),
         native_ledger_transfer_fee in arb_nat(),
-        native_symbol in "[a-z_]*"
+        native_symbol in "[a-z_]*",
+        ledger_suite_manager_id in arb_principal()
     ) -> InitArg {
         InitArg {
             evm_network: EvmNetwork::Sepolia,
             ecdsa_key_name,
             helper_contract_address: contract_address.map(|addr| addr.to_string()),
             native_ledger_id,
+            native_index_id,
             block_height,
             native_minimum_withdrawal_amount,
             next_transaction_nonce,
             last_scraped_block_number,
             min_max_priority_fee_per_gas,
             native_ledger_transfer_fee,
-            native_symbol
+            native_symbol,
+            ledger_suite_manager_id,
+
         }
     }
 }
