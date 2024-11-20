@@ -20,9 +20,8 @@ use evm_minter::lifecycle::MinterArg;
 use evm_minter::logs::{DEBUG, INFO};
 use evm_minter::lsm_client::LSMClient;
 use evm_minter::memo::BurnMemo;
-use evm_minter::numeric::{BlockNumber, Erc20Value, LedgerBurnIndex, Wei};
+use evm_minter::numeric::{Erc20Value, LedgerBurnIndex, Wei};
 use evm_minter::rpc_client::providers::Provider;
-use evm_minter::rpc_client::RpcClient;
 use evm_minter::state::audit::{process_event, Event, EventType};
 use evm_minter::state::transactions::{
     Erc20WithdrawalRequest, NativeWithdrawalRequest, Reimbursed, ReimbursementIndex,

@@ -18,7 +18,7 @@ pub(crate) const LEDGER_BYTECODE: &[u8] =
     include_bytes!("../../wasm/index_ng_canister_u256.raw.wasm");
 pub(crate) const INDEX_BYTECODE: &[u8] = include_bytes!("../../wasm/ledger_canister_u256.raw.wasm");
 
-const ADD_NATIVE_LS_METHOD: &str = "add_new_native_ls";
+const ADD_NATIVE_LS_METHOD: &str = "add_native_ls";
 
 // Define Hash types
 const WASM_HASH_LENGTH: usize = 32;
