@@ -141,7 +141,7 @@ fn init_state() {
                 helper_contract_address: None,
                 native_ledger_id: Principal::from_text("apia6-jaaaa-aaaar-qabma-cai")
                     .expect("BUG: invalid principal"),
-                native_index_id: Principal::from_text("npoa7-loaaa-abbar-vbbna-cai")
+                native_index_id: Principal::from_text("eysav-tyaaa-aaaap-akqfq-cai")
                     .expect("BUG: invalid principal"),
                 block_height: Default::default(),
                 native_minimum_withdrawal_amount: wei_from_milli_ether(10).into(),
@@ -150,7 +150,7 @@ fn init_state() {
                 native_symbol: "IcBNB".to_string(),
                 native_ledger_transfer_fee: candid::Nat::from(1000_u128),
                 min_max_priority_fee_per_gas: candid::Nat::from(1000000_u128),
-                ledger_suite_manager_id: Principal::from_text("apia6-jaaaa-aaaar-qabma-cai")
+                ledger_suite_manager_id: Principal::from_text("kmcdp-4yaaa-aaaag-ats3q-cai")
                     .expect("BUG: invalid principal"),
             })
             .expect("init args should be valid"),

@@ -1194,26 +1194,6 @@ mod evm_rpc_conversion {
         }
     }
 
-    pub fn evm_rpc_fee_history(
-        minter_fee_history: FeeHistory,
-        gas_used_ratio: Vec<f64>,
-    ) -> EvmFeeHistory {
-        EvmFeeHistory {
-            oldest_block: minter_fee_history.oldest_block.into(),
-            base_fee_per_gas: minter_fee_history
-                .base_fee_per_gas
-                .into_iter()
-                .map(Nat256::from)
-                .collect(),
-            gas_used_ratio,
-            reward: minter_fee_history
-                .reward
-                .into_iter()
-                .map(|rewards| rewards.into_iter().map(Nat256::from).collect())
-                .collect(),
-        }
-    }
-
     fn evm_rpc_block() -> EvmBlock {
         EvmBlock {
             base_fee_per_gas: Some(8_876_901_983_u64.into()),
@@ -1372,19 +1352,5 @@ mod evm_rpc_conversion {
 
     fn arb_evm_rpc_transaction_count() -> impl Strategy<Value = EvmRpcResult<Nat256>> {
         proptest::result::maybe_ok(arb_nat_256(), arb_evm_rpc_error())
-    }
-
-    fn arb_evm_rpc_send_raw_transaction_status(
-    ) -> impl Strategy<Value = EvmSendRawTransactionStatus> {
-        use proptest::{
-            option,
-            prelude::{prop_oneof, Just},
-        };
-        prop_oneof![
-            option::of(arb_hex32()).prop_map(EvmSendRawTransactionStatus::Ok),
-            Just(EvmSendRawTransactionStatus::InsufficientFunds),
-            Just(EvmSendRawTransactionStatus::NonceTooLow),
-            Just(EvmSendRawTransactionStatus::NonceTooHigh),
-        ]
     }
 }

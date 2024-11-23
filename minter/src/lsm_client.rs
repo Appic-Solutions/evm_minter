@@ -15,8 +15,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_bytes::ByteArray;
 
 pub(crate) const LEDGER_BYTECODE: &[u8] =
-    include_bytes!("../../wasm/index_ng_canister_u256.raw.wasm");
-pub(crate) const INDEX_BYTECODE: &[u8] = include_bytes!("../../wasm/ledger_canister_u256.raw.wasm");
+    include_bytes!("../../wasm/index_ng_canister_u256.wasm.gz");
+pub(crate) const INDEX_BYTECODE: &[u8] = include_bytes!("../../wasm/ledger_canister_u256.wasm.gz");
 
 const ADD_NATIVE_LS_METHOD: &str = "add_native_ls";
 

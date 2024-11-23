@@ -37,7 +37,7 @@ fn initial_state() -> State {
         helper_contract_address: None,
         native_ledger_id: Principal::from_text("apia6-jaaaa-aaaar-qabma-cai")
             .expect("BUG: invalid principal"),
-        native_index_id: Principal::from_text("npoa7-loaaa-abbar-vbbna-cai")
+        native_index_id: Principal::from_text("eysav-tyaaa-aaaap-akqfq-cai")
             .expect("BUG: invalid principal"),
         block_height: Default::default(),
         native_minimum_withdrawal_amount: wei_from_milli_ether(20).into(),
@@ -46,7 +46,7 @@ fn initial_state() -> State {
         native_symbol: "icMatic".to_string(),
         native_ledger_transfer_fee: wei_from_milli_ether(10).into(),
         min_max_priority_fee_per_gas: Wei::new(15000).into(),
-        ledger_suite_manager_id: Principal::from_text("aafa6-jbbbb-aaaar-qabma-cai")
+        ledger_suite_manager_id: Principal::from_text("kmcdp-4yaaa-aaaag-ats3q-cai")
             .expect("BUG: invalid principal"),
     })
     .expect("init args should be valid")

@@ -3,7 +3,7 @@ mod tests;
 
 use async_trait::async_trait;
 use candid::utils::ArgumentEncoder;
-use candid::{CandidType, Nat, Principal};
+use candid::{CandidType, Principal};
 use ic_canister_log::{log, Sink};
 use ic_cdk::api::call::RejectionCode;
 use serde::de::DeserializeOwned;

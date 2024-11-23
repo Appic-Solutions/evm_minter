@@ -159,10 +159,12 @@ type InitArg = record {
   native_symbol : text;
   helper_contract_address : opt text;
   native_ledger_transfer_fee : nat;
+  native_index_id : principal;
   native_ledger_id : principal;
   block_height : CandidBlockTag;
   evm_network : EvmNetwork;
   min_max_priority_fee_per_gas : nat;
+  ledger_suite_manager_id : principal;
 };
 type LedgerError = variant {
   TemporarilyUnavailable : text;
