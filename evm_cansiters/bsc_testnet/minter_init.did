@@ -5,13 +5,14 @@
             ecdsa_key_name = "key_1";
             next_transaction_nonce = 0 : nat;
             native_minimum_withdrawal_amount = 100 : nat;
-            native_symbol = "icBNB";
+            native_symbol = "icTestBNB";
             helper_contract_address = "0x733a1beef5a02990aad285d7ed93fc1b622eef1d";
             native_ledger_transfer_fee = 10 : nat;
             native_ledger_id = principal "n44gr-qyaaa-aaaam-qbuha-cai";
             block_height = variant { Latest };
             evm_network = variant { BSCTestnet };
             min_max_priority_fee_per_gas = 0 : nat;
+            ledger_suite_manager_id: Principal "kmcdp-4yaaa-aaaag-ats3q-cai",
         };
     }
 );
