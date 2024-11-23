@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 // Ledger suite manager helper functions
 // This module produces the wasm hashes that are used by native twin ledger and index casniters
 // With the produced wasm hash the necessary type for calling the add_new_native_ls function of lsm(Ledger suite manager) is then produced.
@@ -17,6 +20,11 @@ use serde_bytes::ByteArray;
 pub(crate) const LEDGER_BYTECODE: &[u8] =
     include_bytes!("../../wasm/index_ng_canister_u256.wasm.gz");
 pub(crate) const INDEX_BYTECODE: &[u8] = include_bytes!("../../wasm/ledger_canister_u256.wasm.gz");
+
+pub(crate) const _LEDGER_BYTECODE_RAW: &[u8] =
+    include_bytes!("../../wasm/index_ng_canister_u256.raw.wasm");
+pub(crate) const _INDEX_BYTECODE_RAW: &[u8] =
+    include_bytes!("../../wasm/ledger_canister_u256.raw.wasm");
 
 const ADD_NATIVE_LS_METHOD: &str = "add_native_ls";
 

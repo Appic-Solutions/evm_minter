@@ -2,7 +2,7 @@
   "canisters": {
     "ledger": {
       "type": "custom",
-      "wasm": "wasm/ledger_canister_u256.raw.wasm",
+      "wasm": "wasm/ledger_canister_u256.wasm.gz",
       "candid": "../../did/ledger.did",
       "shrink": false,
       "metadata": [
@@ -13,7 +13,7 @@
     },
     "index": {
       "type": "custom",
-      "wasm": "wasm/index_ng_canister_u256.raw.wasm",
+      "wasm": "wasm/index_ng_canister_u256.wasm.gz",
       "candid": "../../did/index-ng.did",
       "shrink": false,
       "metadata": [

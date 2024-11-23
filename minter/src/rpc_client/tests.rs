@@ -770,19 +770,17 @@ mod evm_rpc_conversion {
         only_inconsistent_ok_results_without_providers, TransactionReceipt,
     };
     use crate::rpc_client::{Block, LogEntry, MultiCallError, Reduce, ReducedResult};
-    use crate::rpc_declrations::{FeeHistory, TransactionStatus};
+    use crate::rpc_declrations::TransactionStatus;
     use crate::test_fixtures::arb::{
         arb_block, arb_evm_rpc_error, arb_hex, arb_hex20, arb_hex256, arb_hex32, arb_hex_byte,
         arb_log_entry, arb_nat_256, arb_transaction_receipt,
     };
 
     use evm_rpc_types::{
-        Block as EvmBlock, EthMainnetService as EvmEthMainnetService, EthSepoliaService,
-        FeeHistory as EvmFeeHistory, Hex, Hex20, Hex32, LogEntry as EvmLogEntry,
-        MultiRpcResult as EvmMultiRpcResult, Nat256, RpcError as EvmRpcError,
-        RpcResult as EvmRpcResult, RpcService as EvmRpcService, RpcService,
-        SendRawTransactionStatus as EvmSendRawTransactionStatus,
-        TransactionReceipt as EvmTransactionReceipt,
+        Block as EvmBlock, EthMainnetService as EvmEthMainnetService, EthSepoliaService, Hex,
+        Hex20, Hex32, LogEntry as EvmLogEntry, MultiRpcResult as EvmMultiRpcResult, Nat256,
+        RpcError as EvmRpcError, RpcResult as EvmRpcResult, RpcService as EvmRpcService,
+        RpcService, TransactionReceipt as EvmTransactionReceipt,
     };
     use proptest::collection::vec;
     use proptest::option;

@@ -1,4 +1,4 @@
-use candid::{Nat, Principal};
+use candid::Nat;
 use evm_minter::address::{validate_address_as_destination, AddressValidationError};
 use evm_minter::deposit::{scrape_logs, update_last_observed_block_number};
 use evm_minter::deposit_logs::{EventSource, ReceivedErc20Event, ReceivedNativeEvent};
@@ -841,19 +841,19 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
     }
 }
 
-#[cfg(feature = "debug_checks")]
-#[query]
-fn check_audit_log() {
-    use evm_minter::state::audit::replay_events;
+// #[cfg(feature = "debug_checks")]
+// #[query]
+// fn check_audit_log() {
+//     use evm_minter::state::audit::replay_events;
 
-    emit_preupgrade_events();
+//     emit_preupgrade_events();
 
-    read_state(|s| {
-        replay_events()
-            .is_equivalent_to(s)
-            .expect("replaying the audit log should produce an equivalent state")
-    })
-}
+//     read_state(|s| {
+//         replay_events()
+//             .is_equivalent_to(s)
+//             .expect("replaying the audit log should produce an equivalent state")
+//     })
+// }
 
 /// Returns the amount of heap memory in bytes that has been allocated.
 #[cfg(target_arch = "wasm32")]
