@@ -196,11 +196,13 @@ type MinterInfo = record {
   last_gas_fee_estimate : opt GasFeeEstimate;
   native_twin_token_ledger_id : opt principal;
   helper_smart_contract_address : opt text;
+  swap_canister_id : opt principal;
   minimum_withdrawal_amount : opt nat;
   erc20_balances : opt vec Erc20Balance;
   minter_address : opt text;
   block_height : opt CandidBlockTag;
   native_balance : opt nat;
+  ledger_suite_manager_id : opt principal;
 };
 type QueryStats = record {
   response_payload_bytes_total : nat;

@@ -236,6 +236,8 @@ async fn get_minter_info() -> MinterInfo {
             erc20_balances,
             last_scraped_block_number: Some(s.last_scraped_block_number.into()),
             native_twin_token_ledger_id: Some(s.native_ledger_id),
+            ledger_suite_manager_id: s.ledger_suite_manager_id,
+            swap_canister_id: s.swap_canister_id,
         }
     })
 }

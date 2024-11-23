@@ -139,7 +139,7 @@ pub struct State {
     // pub http_request_counter: u64,
     pub last_transaction_price_estimate: Option<(u64, GasFeeEstimate)>,
 
-    // Canister ID of the ledger suite orchestrator that
+    // Canister ID of the ledger suite manager that
     // can add new ERC-20 token to the minter
     pub ledger_suite_manager_id: Option<Principal>,
     /// ERC-20 tokens that the minter can mint:

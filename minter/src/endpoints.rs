@@ -75,6 +75,8 @@ pub struct MinterInfo {
     pub erc20_balances: Option<Vec<Erc20Balance>>,
     pub last_scraped_block_number: Option<Nat>,
     pub native_twin_token_ledger_id: Option<Principal>,
+    pub swap_canister_id: Option<Principal>,
+    pub ledger_suite_manager_id: Option<Principal>,
 }
 
 #[derive(CandidType, Deserialize, Clone, Debug, Eq, PartialEq)]
