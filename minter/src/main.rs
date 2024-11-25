@@ -6,7 +6,7 @@ use evm_minter::endpoints::events::{
     Event as CandidEvent, EventSource as CandidEventSource, GetEventsArg, GetEventsResult,
 };
 
-use evm_minter::endpoints::{self, AddErc20Token};
+use evm_minter::endpoints::{self, AddErc20Token, Icrc28TrustedOriginsResponse};
 use evm_minter::endpoints::{
     Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, GasFeeEstimate, MinterInfo,
     RetrieveNativeRequest, RetrieveNativeStatus, WithdrawalArg, WithdrawalDetail, WithdrawalError,
@@ -846,6 +846,29 @@ pub fn heap_memory_size_bytes() -> usize {
 #[cfg(not(any(target_arch = "wasm32")))]
 pub fn heap_memory_size_bytes() -> usize {
     0
+}
+
+// list every base URL that users will authenticate to your app from
+#[update]
+fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
+    let trusted_origins = vec![
+        String::from("https://dduc6-3yaaa-aaaal-ai63a-cai.icp0.io"),
+        String::from("https://dduc6-3yaaa-aaaal-ai63a-cai.raw.icp0.io"),
+        String::from("https://dduc6-3yaaa-aaaal-ai63a-cai.ic0.app"),
+        String::from("https://dduc6-3yaaa-aaaal-ai63a-cai.raw.ic0.app"),
+        String::from("https://dduc6-3yaaa-aaaal-ai63a-cai.icp0.icp-api.io"),
+        String::from("https://dduc6-3yaaa-aaaal-ai63a-cai.icp-api.io"),
+        String::from("https://app.appicdao.com"),
+        String::from("https://ib67n-yiaaa-aaaao-qjwca-cai.icp0.io"),
+        String::from("https://ib67n-yiaaa-aaaao-qjwca-cai.raw.icp0.io"),
+        String::from("https://ib67n-yiaaa-aaaao-qjwca-cai.ic0.app"),
+        String::from("https://ib67n-yiaaa-aaaao-qjwca-cai.raw.ic0.app"),
+        String::from("https://ib67n-yiaaa-aaaao-qjwca-cai.icp0.icp-api.io"),
+        String::from("https://ib67n-yiaaa-aaaao-qjwca-cai.icp-api.io"),
+        String::from("https://test.appicdao.com"),
+    ];
+
+    return Icrc28TrustedOriginsResponse { trusted_origins };
 }
 
 fn main() {}

@@ -151,6 +151,7 @@ type GasFeeEstimate = record {
 };
 type GetEventsArg = record { start : nat64; length : nat64 };
 type GetEventsResult = record { total_event_count : nat64; events : vec Event };
+type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
 type InitArg = record {
   last_scraped_block_number : nat;
   ecdsa_key_name : text;
@@ -324,6 +325,7 @@ service : (MinterArg) -> {
   get_canister_status : () -> (CanisterStatusResponse);
   get_events : (GetEventsArg) -> (GetEventsResult) query;
   get_minter_info : () -> (MinterInfo) query;
+  icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
   minter_address : () -> (text);
   retrieve_native_status : (nat64) -> (RetrieveNativeStatus);
   smart_contract_address : () -> (text) query;

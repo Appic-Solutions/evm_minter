@@ -13,6 +13,12 @@ use minicbor::{Decode, Encode};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+// For wallet connection
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct Icrc28TrustedOriginsResponse {
+    pub trusted_origins: Vec<String>,
+}
+
 #[derive(CandidType, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Eip1559TransactionPriceArg {
     pub erc20_ledger_id: Principal,
