@@ -9,7 +9,9 @@ mod tests;
 
 use std::fmt::{Debug, Display, Formatter};
 
+use crate::logs::INFO;
 use crate::management::Reason;
+use crate::state::{read_state, State};
 use crate::{lifecycle::InitArg, logs::DEBUG, management::CallError};
 use candid::{self, CandidType, Nat, Principal};
 use ic_canister_log::log;
@@ -129,14 +131,14 @@ impl LSMClient {
     // Priduces the InstalledNativeLedgerSuite through init args
     pub async fn call_lsm_to_add_twin_native(
         self,
-        inti_args: InitArg,
+        state: State,
     ) -> Result<(), InvalidNativeInstalledCanistersError> {
-        let chain_id = inti_args.evm_network.chain_id();
+        let chain_id = state.evm_network.chain_id();
 
         let native_ls_args = self.new_native_ls(
-            inti_args.native_symbol,
-            inti_args.native_ledger_id,
-            inti_args.native_index_id,
+            state.native_symbol.to_string(),
+            state.native_ledger_id,
+            state.native_index_id,
             chain_id,
         );
 
@@ -181,6 +183,30 @@ impl LSMClient {
                 method: method.to_string(),
                 reason: Reason::from_reject(code, msg),
             }),
+        }
+    }
+}
+
+pub async fn lazy_add_native_ls_to_lsm_canister() {
+    // Call ledger_suite_manager to add the native twin token
+
+    let state = read_state(|s| s.clone());
+
+    let lsm_client = LSMClient::new(state.ledger_suite_manager_id.unwrap());
+
+    let add_native_ls_result = lsm_client.call_lsm_to_add_twin_native(state.clone()).await;
+    match add_native_ls_result {
+        Ok(()) => {
+            log!(INFO, "[init]: Added native ls to lsm cansiter");
+        }
+
+        Err(e) => {
+            log!(
+                DEBUG,
+                "Failed to init casniter due to failed call to lsm.{:?}",
+                e
+            );
+            ic_cdk::trap("Failed to init casniter due to failed call to lsm.");
         }
     }
 }

@@ -975,6 +975,7 @@ fn state_equivalence() {
         evm_network: EvmNetwork::Sepolia,
         ecdsa_key_name: "test_key".to_string(),
         native_ledger_id: "apia6-jaaaa-aaaar-qabma-cai".parse().unwrap(),
+        native_index_id: "eysav-tyaaa-aaaap-akqfq-cai".parse().unwrap(),
         helper_contract_address: Some(
             "0xb44B5e756A894775FC32EDdf3314Bb1B1944dC34"
                 .parse()

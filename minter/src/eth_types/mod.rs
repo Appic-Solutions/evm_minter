@@ -129,5 +129,5 @@ impl fmt::Display for Address {
 }
 
 fn keccak(bytes: &[u8]) -> [u8; 32] {
-    ic_crypto_sha3::Keccak256::hash(bytes)
+    ic_sha3::Keccak256::hash(bytes)
 }

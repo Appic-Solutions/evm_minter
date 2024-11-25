@@ -2,7 +2,7 @@
   variant {
     Init = record {
       decimals = opt (18 : nat8);
-      token_symbol = "icBNB";
+      token_symbol = "icTestBNB";
       transfer_fee = 10_000_000_000_000 : nat;
       metadata = vec {
         record {
@@ -36,7 +36,7 @@
         controller_id = principal "kmcdp-4yaaa-aaaag-ats3q-cai";
       };
       max_memo_length = opt (80 : nat16);
-      token_name = "icBNB";
+      token_name = "icBNB on bsc test-net";
       feature_flags = opt record { icrc2 = true };
     }
   },

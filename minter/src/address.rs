@@ -18,7 +18,7 @@ pub fn ecdsa_public_key_to_address(pubkey: &PublicKey) -> Address {
 }
 
 fn keccak(bytes: &[u8]) -> [u8; 32] {
-    ic_crypto_sha3::Keccak256::hash(bytes)
+    ic_sha3::Keccak256::hash(bytes)
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

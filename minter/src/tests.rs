@@ -32,7 +32,7 @@ mod get_deposit_logs {
     use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
     use crate::rpc_declrations::LogEntry;
     use candid::Principal;
-    use ic_crypto_sha3::Keccak256;
+    use ic_sha3::Keccak256;
     use std::str::FromStr;
 
     #[test]

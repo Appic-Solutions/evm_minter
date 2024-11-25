@@ -89,25 +89,6 @@ async fn init(arg: MinterArg) {
                     State::try_from(init_arg.clone()).expect("BUG: failed to initialize minter"),
                 )
             });
-
-            // Call ledger_suite_manager to add the native twin token
-            let lsm_client = LSMClient::new(init_arg.ledger_suite_manager_id);
-
-            let add_native_ls_result = lsm_client.call_lsm_to_add_twin_native(init_arg).await;
-            match add_native_ls_result {
-                Ok(()) => {
-                    log!(INFO, "[init]: Added native ls to lsm cansiter");
-                }
-
-                Err(e) => {
-                    log!(
-                        DEBUG,
-                        "Failed to init casniter due to failed call to lsm.{:?}",
-                        e
-                    );
-                    ic_cdk::trap("Failed to init casniter due to failed call to lsm.");
-                }
-            }
         }
 
         MinterArg::UpgradeArg(_) => {
@@ -119,7 +100,14 @@ async fn init(arg: MinterArg) {
     set_rpc_api_key(Provider::Ankr, ankr_api_key.to_string());
     set_rpc_api_key(Provider::LlamaNodes, llama_api_key.to_string());
 
-    // setup_timers();
+    setup_timers();
+
+    // Add native ledger suite to the lsm casniter.
+    ic_cdk_timers::set_timer(Duration::from_secs(0), || {
+        ic_cdk::spawn(async {
+            let _ = lazy_call_ecdsa_public_key().await;
+        })
+    });
 }
 
 fn emit_preupgrade_events() {
@@ -145,7 +133,7 @@ fn post_upgrade(minter_arg: Option<MinterArg>) {
         Some(MinterArg::UpgradeArg(upgrade_args)) => lifecycle::post_upgrade(Some(upgrade_args)),
         None => lifecycle::post_upgrade(None),
     }
-    // setup_timers();
+    setup_timers();
 }
 
 #[update]

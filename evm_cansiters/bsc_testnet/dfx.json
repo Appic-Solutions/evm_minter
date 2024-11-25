@@ -2,7 +2,7 @@
   "canisters": {
     "ledger": {
       "type": "custom",
-      "wasm": "wasm/ledger_canister_u256.wasm.gz",
+      "wasm": "../../wasm/ledger_canister_u256.wasm.gz",
       "candid": "../../did/ledger.did",
       "shrink": false,
       "metadata": [
@@ -13,7 +13,7 @@
     },
     "index": {
       "type": "custom",
-      "wasm": "wasm/index_ng_canister_u256.wasm.gz",
+      "wasm": "../../wasm/index_ng_canister_u256.wasm.gz",
       "candid": "../../did/index-ng.did",
       "shrink": false,
       "metadata": [
@@ -29,7 +29,6 @@
       "wasm": "../../target/wasm32-unknown-unknown/release/evm_minter.wasm",
       "shrink": false,
       "build": ["make build --directory=../../ "],
-      "init_arg_file": "init.did",
       "metadata": [
         {
           "name": "candid:service"
