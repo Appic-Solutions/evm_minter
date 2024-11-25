@@ -782,7 +782,7 @@ pub async fn lazy_refresh_gas_fee_estimate() -> Option<GasFeeEstimate> {
     }
 
     async fn get_fee_history() -> Result<FeeHistory, MultiCallError<FeeHistory>> {
-        read_state(RpcClient::from_state_all_providers)
+        read_state(RpcClient::from_state_one_provider)
             .fee_history(FeeHistoryParams {
                 block_count: Quantity::from(5_u8),
                 highest_block: BlockSpec::Tag(BlockTag::Latest),

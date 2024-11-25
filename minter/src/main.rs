@@ -509,15 +509,6 @@ async fn add_erc20_token(erc20_token: AddErc20Token) {
 }
 
 #[update]
-async fn get_block_number() -> Option<Nat> {
-    let block_number = update_last_observed_block_number().await;
-    match block_number {
-        Some(block) => Some(Nat::from(block)),
-        None => None,
-    }
-}
-
-#[update]
 async fn get_canister_status() -> ic_cdk::api::management_canister::main::CanisterStatusResponse {
     ic_cdk::api::management_canister::main::canister_status(
         ic_cdk::api::management_canister::main::CanisterIdRecord {
