@@ -1,7 +1,7 @@
 (
     variant {
         InitArg = record {
-            last_scraped_block_number = 45935453 : nat;
+            last_scraped_block_number = 45935911 : nat;
             ecdsa_key_name = "key_1";
             next_transaction_nonce = 0 : nat;
             native_minimum_withdrawal_amount = 100_000_000_000_000 : nat;
