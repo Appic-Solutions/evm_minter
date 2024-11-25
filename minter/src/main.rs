@@ -17,8 +17,8 @@ use evm_minter::erc20::ERC20Token;
 use evm_minter::guard::retrieve_withdraw_guard;
 use evm_minter::ledger_client::{LedgerBurnError, LedgerClient};
 use evm_minter::lifecycle::MinterArg;
-use evm_minter::logs::{DEBUG, INFO};
-use evm_minter::lsm_client::LSMClient;
+use evm_minter::logs::INFO;
+use evm_minter::lsm_client::lazy_add_native_ls_to_lsm_canister;
 use evm_minter::memo::BurnMemo;
 use evm_minter::numeric::{Erc20Value, LedgerBurnIndex, Wei};
 use evm_minter::rpc_client::providers::Provider;
@@ -105,7 +105,7 @@ async fn init(arg: MinterArg) {
     // Add native ledger suite to the lsm casniter.
     ic_cdk_timers::set_timer(Duration::from_secs(0), || {
         ic_cdk::spawn(async {
-            let _ = lazy_call_ecdsa_public_key().await;
+            let _ = lazy_add_native_ls_to_lsm_canister().await;
         })
     });
 }

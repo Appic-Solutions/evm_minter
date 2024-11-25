@@ -126,7 +126,7 @@ impl TryFrom<InitArg> for State {
             ledger_suite_manager_id: Some(ledger_suite_manager_id),
             erc20_tokens: Default::default(),
             erc20_balances: Default::default(),
-            evm_canister_id: Principal::from_slice(&[0_u8, 0, 0, 0, 2, 48, 0, 204, 1, 1]),
+            evm_canister_id: Principal::from_text("sosge-5iaaa-aaaag-alcla-cai").unwrap(),
             min_max_priority_fee_per_gas,
             swap_canister_id: None,
         };

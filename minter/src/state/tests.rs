@@ -1027,7 +1027,7 @@ fn state_equivalence() {
         erc20_balances: Default::default(),
         skipped_blocks: Default::default(),
         last_transaction_price_estimate: None,
-        evm_canister_id: "7hfb6-caaaa-aaaar-qadga-cai".parse().unwrap(),
+        evm_canister_id: "sosge-5iaaa-aaaag-alcla-cai".parse().unwrap(),
         erc20_tokens,
         native_symbol: ERC20TokenSymbol::new("icSepoliaETH".to_string()),
         native_ledger_transfer_fee: Wei::new(2_000_000_000_000_000),

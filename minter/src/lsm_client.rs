@@ -12,7 +12,7 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::logs::INFO;
 use crate::management::Reason;
 use crate::state::{read_state, State};
-use crate::{lifecycle::InitArg, logs::DEBUG, management::CallError};
+use crate::{logs::DEBUG, management::CallError};
 use candid::{self, CandidType, Nat, Principal};
 use ic_canister_log::log;
 use ic_cdk;
@@ -197,16 +197,11 @@ pub async fn lazy_add_native_ls_to_lsm_canister() {
     let add_native_ls_result = lsm_client.call_lsm_to_add_twin_native(state.clone()).await;
     match add_native_ls_result {
         Ok(()) => {
-            log!(INFO, "[init]: Added native ls to lsm cansiter");
+            log!(INFO, "Added native ls to lsm cansiter");
         }
 
         Err(e) => {
-            log!(
-                DEBUG,
-                "Failed to init casniter due to failed call to lsm.{:?}",
-                e
-            );
-            ic_cdk::trap("Failed to init casniter due to failed call to lsm.");
+            log!(DEBUG, "Failed to to add native ls to lsm casniter.{:?}", e);
         }
     }
 }

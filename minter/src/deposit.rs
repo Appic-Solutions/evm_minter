@@ -174,7 +174,7 @@ pub async fn update_last_observed_block_number() -> Option<BlockNumber> {
                     // So we go 15 blocks before the latest block
                     block_number = latest_block.number.checked_sub(
                         BlockNumber::try_from(20_u32)
-                            .expect("Removing 15 blocks from latest block shouldnever fails"),
+                            .expect("Removing 20 blocks from latest block shouldnever fails"),
                     )
                 }
                 EvmNetwork::ArbitrumOne => {
@@ -183,7 +183,7 @@ pub async fn update_last_observed_block_number() -> Option<BlockNumber> {
                     //  or other unexpected events.
                     block_number = latest_block.number.checked_sub(
                         BlockNumber::try_from(12_u32)
-                            .expect("Removing 15 blocks from latest block shouldnever fails"),
+                            .expect("Removing 12 blocks from latest block shouldnever fails"),
                     )
                 }
                 EvmNetwork::Base => {
@@ -193,7 +193,7 @@ pub async fn update_last_observed_block_number() -> Option<BlockNumber> {
 
                     block_number = latest_block.number.checked_sub(
                         BlockNumber::try_from(12_u32)
-                            .expect("Removing 15 blocks from latest block shouldnever fails"),
+                            .expect("Removing 12 blocks from latest block shouldnever fails"),
                     )
                 }
                 EvmNetwork::Optimism => {
@@ -202,7 +202,7 @@ pub async fn update_last_observed_block_number() -> Option<BlockNumber> {
 
                     block_number = latest_block.number.checked_sub(
                         BlockNumber::try_from(12_u32)
-                            .expect("Removing 15 blocks from latest block shouldnever fails"),
+                            .expect("Removing 12 blocks from latest block shouldnever fails"),
                     )
                 }
                 EvmNetwork::Avalanche => {
@@ -212,7 +212,7 @@ pub async fn update_last_observed_block_number() -> Option<BlockNumber> {
 
                     block_number = latest_block.number.checked_sub(
                         BlockNumber::try_from(12_u32)
-                            .expect("Removing 15 blocks from latest block shouldnever fails"),
+                            .expect("Removing 12 blocks from latest block shouldnever fails"),
                     )
                 }
 
@@ -223,7 +223,7 @@ pub async fn update_last_observed_block_number() -> Option<BlockNumber> {
 
                     block_number = latest_block.number.checked_sub(
                         BlockNumber::try_from(12_u32)
-                            .expect("Removing 15 blocks from latest block shouldnever fails"),
+                            .expect("Removing 12 blocks from latest block shouldnever fails"),
                     )
                 }
 

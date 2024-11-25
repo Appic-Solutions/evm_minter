@@ -31,7 +31,7 @@ pub mod test_fixtures;
 #[cfg(test)]
 mod tests;
 
-pub const SCRAPING_DEPOSIT_LOGS_INTERVAL: Duration = Duration::from_secs(1 * 60);
+pub const SCRAPING_DEPOSIT_LOGS_INTERVAL: Duration = Duration::from_secs(5 * 60);
 pub const PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_INTERVAL: Duration = Duration::from_secs(1 * 60);
 pub const PROCESS_REIMBURSEMENT: Duration = Duration::from_secs(1 * 60);
 pub const PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_RETRY_INTERVAL: Duration = Duration::from_secs(30);
