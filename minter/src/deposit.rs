@@ -144,16 +144,35 @@ pub async fn scrape_logs() {
         Ok(guard) => guard,
         Err(_) => return,
     };
-    let last_block_number = match update_last_observed_block_number().await {
-        Some(block_number) => block_number,
-        None => {
-            log!(
-                DEBUG,
-                "[scrape_logs]: skipping scrapping logs: no last observed block number"
-            );
-            return;
+
+    mutate_state(|s| s.last_observed_block_time = Some(ic_cdk::api::time()));
+
+    let mut attempts = 0;
+    const MAX_ATTEMPETS: u32 = 3;
+
+    let last_block_number = loop {
+        match update_last_observed_block_number().await {
+            Some(block_number) => break block_number, // Exit loop on success
+            None => {
+                attempts += 1;
+                log!(
+                    DEBUG,
+                    "[scrape_logs]: attempt {}/{} failed: no last observed block number",
+                    attempts,
+                    MAX_ATTEMPETS
+                );
+
+                if attempts >= MAX_ATTEMPETS {
+                    log!(
+                        DEBUG,
+                        "[scrape_logs]: max retries reached. Skipping scrapping logs."
+                    );
+                    return; // Exit function after maximum retries
+                }
+            }
         }
     };
+
     let max_block_spread = read_state(|s| s.max_block_spread_for_logs_scraping());
     scrape_until_block(last_block_number, max_block_spread).await;
 }

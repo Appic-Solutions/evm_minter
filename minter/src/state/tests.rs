@@ -1034,6 +1034,7 @@ fn state_equivalence() {
         min_max_priority_fee_per_gas: WeiPerGas::new(1000),
         ledger_suite_manager_id: None,
         swap_canister_id: None,
+        last_observed_block_time: None,
     };
 
     assert_eq!(

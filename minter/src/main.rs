@@ -1,12 +1,14 @@
 use candid::Nat;
 use evm_minter::address::{validate_address_as_destination, AddressValidationError};
-use evm_minter::deposit::{scrape_logs, update_last_observed_block_number};
+use evm_minter::deposit::scrape_logs;
 use evm_minter::deposit_logs::{EventSource, ReceivedErc20Event, ReceivedNativeEvent};
 use evm_minter::endpoints::events::{
     Event as CandidEvent, EventSource as CandidEventSource, GetEventsArg, GetEventsResult,
 };
 
-use evm_minter::endpoints::{self, AddErc20Token, Icrc28TrustedOriginsResponse};
+use evm_minter::endpoints::{
+    self, AddErc20Token, Icrc28TrustedOriginsResponse, RequestScrapingError,
+};
 use evm_minter::endpoints::{
     Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, GasFeeEstimate, MinterInfo,
     RetrieveNativeRequest, RetrieveNativeStatus, WithdrawalArg, WithdrawalDetail, WithdrawalError,
@@ -20,7 +22,7 @@ use evm_minter::lifecycle::MinterArg;
 use evm_minter::logs::INFO;
 use evm_minter::lsm_client::lazy_add_native_ls_to_lsm_canister;
 use evm_minter::memo::BurnMemo;
-use evm_minter::numeric::{Erc20Value, LedgerBurnIndex, Wei};
+use evm_minter::numeric::{BlockNumber, Erc20Value, LedgerBurnIndex, Wei};
 use evm_minter::rpc_client::providers::Provider;
 use evm_minter::state::audit::{process_event, Event, EventType};
 use evm_minter::state::transactions::{
@@ -236,6 +238,41 @@ async fn get_minter_info() -> MinterInfo {
             swap_canister_id: s.swap_canister_id,
         }
     })
+}
+
+// The logs are scraped automatically evey 10 minutes, however if a user deposits some funds in the smart contract they can all this function
+// with the block number that deposit trasnaction is located at, and the minter would scrape the logs after necessary validation.
+// Validation factors:
+// 1: The provided block number shlould be greater than last observed block numnber.
+// 2: There should be at least a minute of gap between the last time this function was called and now.
+// Meaning that this function can only be called onces in a minute due to cycle drain attacks.
+#[update]
+async fn request_scraping_logs(block_number: Nat) -> Result<(), RequestScrapingError> {
+    const ONE_MIN_NS: u64 = 60_000_000_000_u64; // 60 seconds
+
+    let last_observed_block_number = read_state(|s| s.last_observed_block_number)
+        .expect("The block number should not be null at the time of this function call");
+
+    let last_observed_block_time = read_state(|s| s.last_observed_block_time)
+        .expect("The block time should not be null at the time of this function call");
+
+    let block_number = BlockNumber::try_from(block_number)
+        .map_err(|_e| RequestScrapingError::InvalidBlockNumber)?;
+
+    // Check if the block number has already been scrapped or not
+    if last_observed_block_number > block_number {
+        return Err(RequestScrapingError::BlockAlreadyObserved);
+    }
+
+    let now_ns = ic_cdk::api::time();
+
+    if now_ns < last_observed_block_time.saturating_add(ONE_MIN_NS) {
+        return Err(RequestScrapingError::CalledTooManyTimes);
+    }
+
+    ic_cdk_timers::set_timer(Duration::from_secs(0), || ic_cdk::spawn(scrape_logs()));
+
+    Ok(())
 }
 
 #[update]
@@ -829,20 +866,6 @@ fn get_events(arg: GetEventsArg) -> GetEventsResult {
         total_event_count: storage::total_event_count(),
     }
 }
-
-// #[cfg(feature = "debug_checks")]
-// #[query]
-// fn check_audit_log() {
-//     use evm_minter::state::audit::replay_events;
-
-//     emit_preupgrade_events();
-
-//     read_state(|s| {
-//         replay_events()
-//             .is_equivalent_to(s)
-//             .expect("replaying the audit log should produce an equivalent state")
-//     })
-// }
 
 /// Returns the amount of heap memory in bytes that has been allocated.
 #[cfg(target_arch = "wasm32")]

@@ -115,6 +115,7 @@ impl TryFrom<InitArg> for State {
             first_scraped_block_number,
             last_scraped_block_number,
             last_observed_block_number: None,
+            last_observed_block_time: None,
             events_to_mint: Default::default(),
             minted_events: Default::default(),
             ecdsa_public_key: None,

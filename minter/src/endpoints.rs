@@ -282,6 +282,13 @@ pub struct AddErc20Token {
     pub erc20_ledger_id: Principal,
 }
 
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
+pub enum RequestScrapingError {
+    CalledTooManyTimes,
+    InvalidBlockNumber,
+    BlockAlreadyObserved,
+}
+
 pub mod events {
     use crate::lifecycle::InitArg;
     use crate::lifecycle::UpgradeArg;

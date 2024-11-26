@@ -115,6 +115,7 @@ pub struct State {
     pub first_scraped_block_number: BlockNumber,
     pub last_scraped_block_number: BlockNumber,
     pub last_observed_block_number: Option<BlockNumber>,
+    pub last_observed_block_time: Option<u64>,
     pub events_to_mint: BTreeMap<EventSource, ReceivedDepositEvent>,
     pub minted_events: BTreeMap<EventSource, MintedEvent>,
     pub invalid_events: BTreeMap<EventSource, InvalidEventReason>,
