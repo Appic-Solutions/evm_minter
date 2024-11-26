@@ -65,6 +65,14 @@ fn setup_timers() {
             let _ = lazy_call_ecdsa_public_key().await;
         })
     });
+
+    ic_cdk_timers::set_timer(Duration::from_secs(0), || {
+        // Initialize the Gas fee etimate for eip1559 transaction price
+        ic_cdk::spawn(async {
+            let _ = lazy_refresh_gas_fee_estimate().await;
+        })
+    });
+
     // Start scraping logs immediately after the install, then repeat with the interval.
     ic_cdk_timers::set_timer(Duration::from_secs(0), || ic_cdk::spawn(scrape_logs()));
     ic_cdk_timers::set_timer_interval(SCRAPING_DEPOSIT_LOGS_INTERVAL, || {
@@ -149,7 +157,7 @@ async fn smart_contract_address() -> String {
 }
 
 /// Estimate price of EIP-1559 transaction based on the
-/// `base_fee_per_gas` included in the last finalized block.
+/// `base_fee_per_gas` included in the last Latest block.
 #[query]
 async fn eip_1559_transaction_price(
     token: Option<Eip1559TransactionPriceArg>,
