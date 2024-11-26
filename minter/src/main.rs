@@ -1,6 +1,6 @@
 use candid::Nat;
 use evm_minter::address::{validate_address_as_destination, AddressValidationError};
-use evm_minter::deposit::scrape_logs;
+use evm_minter::deposit::{scrape_logs, validate_log_scraping_request};
 use evm_minter::deposit_logs::{EventSource, ReceivedErc20Event, ReceivedNativeEvent};
 use evm_minter::endpoints::events::{
     Event as CandidEvent, EventSource as CandidEventSource, GetEventsArg, GetEventsResult,
@@ -248,8 +248,6 @@ async fn get_minter_info() -> MinterInfo {
 // Meaning that this function can only be called onces in a minute due to cycle drain attacks.
 #[update]
 async fn request_scraping_logs(block_number: Nat) -> Result<(), RequestScrapingError> {
-    const ONE_MIN_NS: u64 = 60_000_000_000_u64; // 60 seconds
-
     let last_observed_block_number = read_state(|s| s.last_observed_block_number)
         .expect("The block number should not be null at the time of this function call");
 
@@ -259,16 +257,14 @@ async fn request_scraping_logs(block_number: Nat) -> Result<(), RequestScrapingE
     let block_number = BlockNumber::try_from(block_number)
         .map_err(|_e| RequestScrapingError::InvalidBlockNumber)?;
 
-    // Check if the block number has already been scrapped or not
-    if last_observed_block_number > block_number {
-        return Err(RequestScrapingError::BlockAlreadyObserved);
-    }
-
     let now_ns = ic_cdk::api::time();
 
-    if now_ns < last_observed_block_time.saturating_add(ONE_MIN_NS) {
-        return Err(RequestScrapingError::CalledTooManyTimes);
-    }
+    validate_log_scraping_request(
+        last_observed_block_number,
+        last_observed_block_time,
+        block_number,
+        now_ns,
+    )?;
 
     ic_cdk_timers::set_timer(Duration::from_secs(0), || ic_cdk::spawn(scrape_logs()));
 

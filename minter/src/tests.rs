@@ -24,16 +24,19 @@ fn deserialize_block_spec() {
     );
 }
 mod get_deposit_logs {
+    use crate::deposit::validate_log_scraping_request;
     use crate::deposit_logs::{
         LedgerSubaccount, LogParser, ReceivedDepositLogParser, ReceivedErc20Event,
         ReceivedNativeEvent,
     };
+    use crate::endpoints::RequestScrapingError;
     use crate::eth_types::Address;
     use crate::numeric::{BlockNumber, Erc20Value, LogIndex, Wei};
     use crate::rpc_declrations::LogEntry;
     use candid::Principal;
     use ic_sha3::Keccak256;
     use std::str::FromStr;
+    use time::Duration;
 
     #[test]
     fn deserialize_get_logs() {
@@ -285,6 +288,45 @@ mod get_deposit_logs {
             ),
         });
         assert_eq!(parsed_event, expected_error);
+    }
+
+    #[test]
+    fn should_not_allow_log_scraping() {
+        let validation_result_observed_block = validate_log_scraping_request(
+            BlockNumber::from(100_u32),
+            1_732_638_362_000_000_000_u64,
+            BlockNumber::from(99_u32),
+            2_845_738_362_000_000_000_u64,
+        );
+
+        assert_eq!(
+            validation_result_observed_block,
+            Err(RequestScrapingError::BlockAlreadyObserved)
+        );
+
+        let validation_result_not_enough_gap_between_two_requests = validate_log_scraping_request(
+            BlockNumber::from(100_u32),
+            1_732_638_362_000_000_000_u64,
+            BlockNumber::from(200_u32),
+            1_732_638_362_000_000_000_u64.saturating_add(30_000_000_000_u64),
+        );
+
+        assert_eq!(
+            validation_result_not_enough_gap_between_two_requests,
+            Err(RequestScrapingError::CalledTooManyTimes)
+        );
+    }
+
+    #[test]
+    fn should_allow_log_scrapping() {
+        let validation_result = validate_log_scraping_request(
+            BlockNumber::from(100_u32),
+            1_732_638_362_000_000_000_u64,
+            BlockNumber::from(200_u32),
+            2_845_738_362_000_000_000_u64,
+        );
+
+        assert_eq!(validation_result, Ok(()));
     }
 }
 
