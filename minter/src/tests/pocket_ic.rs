@@ -1,8 +1,7 @@
 const MINTER_WASM_BYTES: &[u8] =
     include_bytes!("../../../target/wasm32-unknown-unknown/release/evm_minter.wasm");
 
-use candid::{encode_one, CandidType, Nat, Principal};
-use ic_management_canister_types::Payload;
+use candid::{CandidType, Nat, Principal};
 use pocket_ic::{PocketIc, PocketIcBuilder, WasmResult};
 
 use crate::{

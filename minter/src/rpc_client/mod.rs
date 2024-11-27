@@ -17,7 +17,7 @@ use crate::{
     },
     state::State,
 };
-use candid::{Nat, Principal};
+use candid::Nat;
 use evm_rpc_client::{CallerService, EvmRpcClient, OverrideRpcConfig};
 use evm_rpc_types::{
     Block as EvmBlock, BlockTag as EvmBlockTag, FeeHistory as EvmFeeHistory,

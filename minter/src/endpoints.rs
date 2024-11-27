@@ -7,7 +7,6 @@ use crate::rpc_declrations::TransactionReceipt;
 use crate::state::transactions::NativeWithdrawalRequest;
 use crate::state::transactions::{self, Erc20WithdrawalRequest};
 use crate::tx::{SignedEip1559TransactionRequest, TransactionPrice};
-use candid::utils::ArgumentDecoder;
 use candid::{CandidType, Deserialize, Nat, Principal};
 use icrc_ledger_types::icrc1::account::Account;
 use minicbor::{Decode, Encode};
