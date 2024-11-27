@@ -61,9 +61,7 @@ impl RpcClient {
         client.evm_rpc_client = Some(
             EvmRpcClient::builder(CallerService {}, TRACE_HTTP)
                 .with_providers(providers)
-                .with_evm_canister_id(
-                    Principal::from_text("sosge-5iaaa-aaaag-alcla-cai").expect("Wrong principal"),
-                )
+                .with_evm_canister_id(state.evm_canister_id)
                 .with_min_attached_cycles(MIN_ATTACHED_CYCLES)
                 .with_override_rpc_config(OverrideRpcConfig {
                     eth_get_logs: Some(EvmRpcConfig {
@@ -92,9 +90,7 @@ impl RpcClient {
         client.evm_rpc_client = Some(
             EvmRpcClient::builder(CallerService {}, TRACE_HTTP)
                 .with_providers(providers)
-                .with_evm_canister_id(
-                    Principal::from_text("sosge-5iaaa-aaaag-alcla-cai").expect("Wrong principal"),
-                )
+                .with_evm_canister_id(state.evm_canister_id)
                 .with_min_attached_cycles(MIN_ATTACHED_CYCLES)
                 .with_override_rpc_config(OverrideRpcConfig {
                     eth_get_logs: Some(EvmRpcConfig {
