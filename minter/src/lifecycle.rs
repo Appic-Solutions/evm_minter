@@ -14,8 +14,9 @@ use candid::types::principal::Principal;
 use candid::{CandidType, Deserialize};
 use ic_canister_log::log;
 use minicbor::{Decode, Encode};
+use serde::Serialize;
 
-#[derive(CandidType, Deserialize, Clone, Debug, Encode, Decode, PartialEq, Eq)]
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug, Encode, Decode, PartialEq, Eq)]
 pub struct InitArg {
     #[n(0)]
     pub evm_network: EvmNetwork,

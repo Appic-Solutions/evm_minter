@@ -7,12 +7,13 @@ use crate::rpc_declrations::TransactionReceipt;
 use crate::state::transactions::NativeWithdrawalRequest;
 use crate::state::transactions::{self, Erc20WithdrawalRequest};
 use crate::tx::{SignedEip1559TransactionRequest, TransactionPrice};
+use candid::utils::ArgumentDecoder;
 use candid::{CandidType, Deserialize, Nat, Principal};
 use icrc_ledger_types::icrc1::account::Account;
 use minicbor::{Decode, Encode};
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-
 // For wallet connection
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct Icrc28TrustedOriginsResponse {
@@ -118,7 +119,9 @@ pub struct RetrieveNativeRequest {
     pub block_index: Nat,
 }
 
-#[derive(CandidType, Debug, Default, Deserialize, Clone, Encode, Decode, PartialEq, Eq)]
+#[derive(
+    CandidType, Debug, Default, Serialize, Deserialize, Clone, Encode, Decode, PartialEq, Eq,
+)]
 #[cbor(index_only)]
 pub enum CandidBlockTag {
     /// The latest mined block.

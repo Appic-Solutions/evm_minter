@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod pocket_ic;
+
 use crate::address::ecdsa_public_key_to_address;
 
 #[test]
@@ -36,7 +39,6 @@ mod get_deposit_logs {
     use candid::Principal;
     use ic_sha3::Keccak256;
     use std::str::FromStr;
-    use time::Duration;
 
     #[test]
     fn deserialize_get_logs() {
@@ -323,7 +325,7 @@ mod get_deposit_logs {
             BlockNumber::from(100_u32),
             1_732_638_362_000_000_000_u64,
             BlockNumber::from(200_u32),
-            2_845_738_362_000_000_000_u64,
+            1_732_638_362_000_000_000_u64.saturating_add(60_000_000_001_u64),
         );
 
         assert_eq!(validation_result, Ok(()));

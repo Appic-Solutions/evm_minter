@@ -1,5 +1,6 @@
 use candid::{CandidType, Deserialize};
 use minicbor::{Decode, Encode};
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
 
@@ -16,6 +17,7 @@ use strum::EnumIter;
     Encode,
     Decode,
     EnumIter,
+    Serialize,
 )]
 #[cbor(index_only)]
 pub enum EvmNetwork {
