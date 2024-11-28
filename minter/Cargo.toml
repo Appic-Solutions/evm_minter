@@ -74,3 +74,6 @@ hex = { version = "0.4.3", features = ["serde"] }
 ethers-core="2.0.14"
 ic-crypto-test-utils-reproducible-rng={ git = "https://github.com/dfinity/ic.git"}
 pocket-ic = "6.0.0"
+
+ic-icrc1-index-ng = { git = "https://github.com/dfinity/ic.git"}
+ic-icrc1-ledger={ git = "https://github.com/dfinity/ic.git"}

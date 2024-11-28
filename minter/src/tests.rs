@@ -1,5 +1,9 @@
 #[cfg(test)]
-mod pocket_ic;
+mod deposit_and_withdrawal_flow;
+#[cfg(test)]
+pub mod lsm_types;
+#[cfg(test)]
+pub mod pocket_ic_helpers;
 
 use crate::address::ecdsa_public_key_to_address;
 
