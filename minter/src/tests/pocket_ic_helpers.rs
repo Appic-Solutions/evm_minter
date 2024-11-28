@@ -162,7 +162,7 @@ fn should_create_and_install_all_minter_dependency_canisters() {
     five_ticks(&pic);
 }
 
-fn query_call<I, O>(pic: &PocketIc, canister_id: Principal, method: &str, payload: I) -> O
+pub fn query_call<I, O>(pic: &PocketIc, canister_id: Principal, method: &str, payload: I) -> O
 where
     O: CandidType + for<'a> serde::Deserialize<'a>,
     I: CandidType,
@@ -179,7 +179,7 @@ where
     decode_wasm_result::<O>(wasm_result).unwrap()
 }
 
-fn update_call<I, O>(pic: &PocketIc, canister_id: Principal, method: &str, payload: I) -> O
+pub fn update_call<I, O>(pic: &PocketIc, canister_id: Principal, method: &str, payload: I) -> O
 where
     O: CandidType + for<'a> serde::Deserialize<'a>,
     I: CandidType,
@@ -385,7 +385,7 @@ fn install_index_canister(pic: &PocketIc, canister_id: Principal) {
     );
 }
 
-fn upgrade_minter_casniter(pic: &PocketIc, canister_id: Principal, upgrade_bytes: Vec<u8>) {
+pub fn upgrade_minter_casniter(pic: &PocketIc, canister_id: Principal, upgrade_bytes: Vec<u8>) {
     pic.upgrade_canister(
         canister_id,
         MINTER_WASM_BYTES.to_vec(),
@@ -395,7 +395,7 @@ fn upgrade_minter_casniter(pic: &PocketIc, canister_id: Principal, upgrade_bytes
     .unwrap()
 }
 
-fn five_ticks(pic: &PocketIc) {
+pub fn five_ticks(pic: &PocketIc) {
     pic.tick();
     pic.tick();
     pic.tick();
@@ -403,18 +403,18 @@ fn five_ticks(pic: &PocketIc) {
     pic.tick();
 }
 
-fn sender_principal() -> Principal {
+pub fn sender_principal() -> Principal {
     Principal::from_text("matbl-u2myk-jsllo-b5aw6-bxboq-7oon2-h6wmo-awsxf-pcebc-4wpgx-4qe").unwrap()
 }
 
-fn minter_principal() -> Principal {
+pub fn minter_principal() -> Principal {
     Principal::from_text("2ztvj-yaaaa-aaaap-ahiza-cai").unwrap()
 }
 
 // Initalizes a test environmet containing evm_rpc_canister, lsm canister, native ledger caister and native index canister.
 // Through this test simulation, real senarios like concurrncy, http failures, no consensus agreement, etc can be tested.
 
-// First the dependency canisters are installed then the minter casniter is intalled.
+// First  the dependency canisters are installed then the minter casniter is intalled.
 pub mod intialize_minter {
     use super::*;
 

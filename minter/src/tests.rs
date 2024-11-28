@@ -1,7 +1,7 @@
 #[cfg(test)]
-mod deposit_and_withdrawal_flow;
-#[cfg(test)]
 pub mod lsm_types;
+#[cfg(test)]
+mod minter_flow_tets;
 #[cfg(test)]
 pub mod pocket_ic_helpers;
 
