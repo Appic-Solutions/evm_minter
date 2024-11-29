@@ -182,7 +182,7 @@ pub async fn scrape_logs() {
 pub async fn update_last_observed_block_number() -> Option<BlockNumber> {
     let block_height = read_state(State::block_height);
     let network = read_state(|state| state.evm_network);
-    match read_state(RpcClient::from_state_one_provider)
+    match read_state(RpcClient::from_state_one_provider_public_node)
         .get_block_by_number(BlockSpec::Tag(block_height))
         .await
     {

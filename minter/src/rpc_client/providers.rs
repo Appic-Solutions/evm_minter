@@ -23,7 +23,83 @@ impl Provider {
     }
 }
 
-pub fn get_one_provider(network: EvmNetwork) -> RpcServices {
+pub fn get_one_provider_ankr(network: EvmNetwork) -> RpcServices {
+    let chain_id = network.chain_id();
+    match network {
+        EvmNetwork::Ethereum => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/eth"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Sepolia => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/eth_sepolia"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::ArbitrumOne => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/arbitrum"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::BSC => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/bsc"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::BSCTestnet => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/bsc_testnet_chapel"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Polygon => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/polygon"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Optimism => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/optimism"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Base => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/base"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Avalanche => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/avalanche"),
+                headers: None,
+            }],
+        },
+        EvmNetwork::Fantom => RpcServices::Custom {
+            chain_id,
+            services: vec![RpcApi {
+                url: Provider::Ankr.get_url_with_api_key("https://rpc.ankr.com/fantom"),
+                headers: None,
+            }],
+        },
+    }
+}
+
+pub fn get_one_provider_public_node(network: EvmNetwork) -> RpcServices {
     let chain_id = network.chain_id();
     match network {
         EvmNetwork::Ethereum => RpcServices::Custom {
@@ -264,7 +340,7 @@ pub fn get_providers(network: EvmNetwork) -> RpcServices {
             services: vec![
                 RpcApi {
                     url: Provider::Ankr
-                        .get_url_with_api_key("https://rpc.ankr.com/bsc_testnet_chapel/"),
+                        .get_url_with_api_key("https://rpc.ankr.com/bsc_testnet_chapel"),
                     headers: None,
                 },
                 RpcApi {

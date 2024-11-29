@@ -179,15 +179,25 @@ where
     decode_wasm_result::<O>(wasm_result).unwrap()
 }
 
-pub fn update_call<I, O>(pic: &PocketIc, canister_id: Principal, method: &str, payload: I) -> O
+pub fn update_call<I, O>(
+    pic: &PocketIc,
+    canister_id: Principal,
+    method: &str,
+    payload: I,
+    sender: Option<Principal>,
+) -> O
 where
     O: CandidType + for<'a> serde::Deserialize<'a>,
     I: CandidType,
 {
+    let sender_princiapl = match sender {
+        Some(p_id) => p_id,
+        None => sender_principal(),
+    };
     let wasm_result = pic
         .update_call(
             canister_id,
-            sender_principal(),
+            sender_princiapl,
             method,
             encode_call_args(payload).unwrap(),
         )
@@ -238,7 +248,7 @@ fn install_minter_canister(pic: &PocketIc, canister_id: Principal) {
         native_minimum_withdrawal_amount: Nat::from(100_000_000_000_000_u128),
         native_ledger_transfer_fee: Nat::from(10_000_000_000_000_u128),
         next_transaction_nonce: Nat::from(0_u128),
-        last_scraped_block_number: Nat::from(45935911_u128),
+        last_scraped_block_number: Nat::from(45944445_u64),
         min_max_priority_fee_per_gas: Nat::from(3_000_000_000_u128),
         ledger_suite_manager_id: "kmcdp-4yaaa-aaaag-ats3q-cai".parse().unwrap(),
     });
@@ -411,6 +421,9 @@ pub fn minter_principal() -> Principal {
     Principal::from_text("2ztvj-yaaaa-aaaap-ahiza-cai").unwrap()
 }
 
+pub fn native_ledger_principal() -> Principal {
+    Principal::from_text("n44gr-qyaaa-aaaam-qbuha-cai").unwrap()
+}
 // Initalizes a test environmet containing evm_rpc_canister, lsm canister, native ledger caister and native index canister.
 // Through this test simulation, real senarios like concurrncy, http failures, no consensus agreement, etc can be tested.
 

@@ -219,8 +219,14 @@ type ReimbursementIndex = variant {
   };
   Native : record { ledger_burn_index : nat };
 };
-type Result = variant { Ok : RetrieveErc20Request; Err : WithdrawErc20Error };
-type Result_1 = variant { Ok : RetrieveNativeRequest; Err : WithdrawalError };
+type RequestScrapingError = variant {
+  BlockAlreadyObserved;
+  CalledTooManyTimes;
+  InvalidBlockNumber;
+};
+type Result = variant { Ok; Err : RequestScrapingError };
+type Result_1 = variant { Ok : RetrieveErc20Request; Err : WithdrawErc20Error };
+type Result_2 = variant { Ok : RetrieveNativeRequest; Err : WithdrawalError };
 type RetrieveErc20Request = record {
   erc20_block_index : nat;
   native_block_index : nat;
@@ -327,10 +333,11 @@ service : (MinterArg) -> {
   get_minter_info : () -> (MinterInfo) query;
   icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
   minter_address : () -> (text);
+  request_scraping_logs : (nat) -> (Result);
   retrieve_native_status : (nat64) -> (RetrieveNativeStatus);
   smart_contract_address : () -> (text) query;
-  withdraw_erc20 : (WithdrawErc20Arg) -> (Result);
-  withdraw_native_token : (WithdrawalArg) -> (Result_1);
+  withdraw_erc20 : (WithdrawErc20Arg) -> (Result_1);
+  withdraw_native_token : (WithdrawalArg) -> (Result_2);
   withdrawal_status : (WithdrawalSearchParameter) -> (
       vec WithdrawalDetail,
     ) query;
