@@ -54,18 +54,6 @@ impl<PR: RequestsGuardedByPrincipal> Guard<PR> {
                 return Err(GuardError::TooManyPendingRequests);
             }
 
-            match s.swap_canister_id {
-                Some(swap_canister_id) => {
-                    if principal == swap_canister_id {
-                        return Ok(Self {
-                            principal,
-                            _marker: PhantomData,
-                        });
-                    }
-                }
-                None => {}
-            }
-
             let principals = PR::guarded_principals(s);
 
             if principals.contains(&principal) {

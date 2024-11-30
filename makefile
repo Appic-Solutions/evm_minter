@@ -14,3 +14,11 @@ build:
 	candid-extractor target/wasm32-unknown-unknown/release/evm_minter.wasm > evm_minter.did
 
 
+test:
+	@echo "Starting the test..."
+	@echo "Ankr_Api_Key = TEST_ANKR_API_4r0uqefpoanfijsbflkfslfjsnlfks"
+	@echo "Llama_Api_Key = TEST_Llama_API_4r0uqefpoanfijsbflkfs"
+	@echo "Building Rust project..."
+	cargo build --release --target wasm32-unknown-unknown --package evm_minter
+	candid-extractor target/wasm32-unknown-unknown/release/evm_minter.wasm > evm_minter.did
+	cargo test

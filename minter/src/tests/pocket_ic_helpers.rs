@@ -63,7 +63,7 @@ fn should_create_and_install_and_upgrade_minter_casniter() {
             native_balance: Some(Nat::from(0_u128)),
             last_gas_fee_estimate: None,
             erc20_balances: Some(vec![]),
-            last_scraped_block_number: Some(Nat::from(45935911_u128)),
+            last_scraped_block_number: Some(Nat::from(45944445_u64)),
             native_twin_token_ledger_id: Some("n44gr-qyaaa-aaaam-qbuha-cai".parse().unwrap()),
             swap_canister_id: None,
             ledger_suite_manager_id: Some("kmcdp-4yaaa-aaaag-ats3q-cai".parse().unwrap())
@@ -206,14 +206,14 @@ where
     decode_wasm_result::<O>(wasm_result).unwrap()
 }
 
-fn encode_call_args<I>(args: I) -> Result<Vec<u8>, ()>
+pub fn encode_call_args<I>(args: I) -> Result<Vec<u8>, ()>
 where
     I: CandidType,
 {
     Ok(candid::encode_one(args).unwrap())
 }
 
-fn decode_wasm_result<O>(wasm_result: WasmResult) -> Result<O, ()>
+pub fn decode_wasm_result<O>(wasm_result: WasmResult) -> Result<O, ()>
 where
     O: CandidType + for<'a> serde::Deserialize<'a>,
 {

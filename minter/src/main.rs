@@ -277,6 +277,7 @@ async fn withdraw_native_token(
 ) -> Result<RetrieveNativeRequest, WithdrawalError> {
     let caller = validate_caller_not_anonymous();
     let _guard = retrieve_withdraw_guard(caller).unwrap_or_else(|e| {
+        println!("{:?}", e);
         ic_cdk::trap(&format!(
             "Failed retrieving guard for principal {}: {:?}",
             caller, e

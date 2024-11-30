@@ -421,10 +421,10 @@ pub fn validate_log_scraping_request(
     block_number: BlockNumber,
     now_ns: u64,
 ) -> Result<(), RequestScrapingError> {
-    const ONE_MIN_NS: u64 = 60_000_000_000_u64; // 60 seconds
+    pub(crate) const ONE_MIN_NS: u64 = 60_000_000_000_u64; // 60 seconds
 
     // Check if the block number has already been scrapped or not
-    if last_observed_block_number > block_number {
+    if last_observed_block_number >= block_number {
         return Err(RequestScrapingError::BlockAlreadyObserved);
     }
 
