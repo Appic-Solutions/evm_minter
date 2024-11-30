@@ -1,19 +1,13 @@
 use std::time::Duration;
 
 use candid::{Nat, Principal};
-use pocket_ic::common::rest::{CanisterHttpReply, CanisterHttpResponse, MockCanisterHttpResponse};
 
 use crate::{
     endpoints::{
         Eip1559TransactionPrice, RequestScrapingError, RetrieveNativeRequest, RetrieveNativeStatus,
-        TxFinalizedStatus, WithdrawalArg, WithdrawalDetail, WithdrawalError,
+        TxFinalizedStatus, WithdrawalArg, WithdrawalError,
     },
-    tests::{
-        lsm_types::generate_successful_mock_response,
-        pocket_ic_helpers::{
-            encode_call_args, five_ticks, native_ledger_principal, sender_principal, update_call,
-        },
-    },
+    tests::pocket_ic_helpers::{five_ticks, native_ledger_principal, update_call},
     PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_INTERVAL,
 };
 
@@ -411,6 +405,7 @@ fn should_not_deposit_twice() {
     assert_eq!(balance, Nat::from(100000000000000000_u128));
 }
 
+// TODO: Test the whole flow for erc20 tokens
 #[test]
 fn should_deposit_and_withdrawal_erc20() {}
 
@@ -580,6 +575,29 @@ mod mock_rpc_https_responses {
     }"#;
 
     pub const MOCK_GET_LOGS: &str = r#"{
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": [
+            {
+                "address": "0x733a1beef5a02990aad285d7ed93fc1b622eef1d",
+                "topics": [
+                    "0xdeaddf8708b62ae1bf8ec4693b523254aa961b2da6bc5be57f3188ee784d6275",
+                    "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "0x000000000000000000000000000000000000000000000000016345785d8a0000",
+                    "0x1de235c6cf77973d181e3d7f5755892a0d4ae76f9c41d1c7a3ce797e4b020000"
+                ],
+                "data": "0x0000000000000000000000005d737f982696fe2fe4ef1c7584e914c3a8e44d540000000000000000000000000000000000000000000000000000000000000000",
+                "blockNumber": "0x2bd0f45",
+                "transactionHash": "0xcde530df6850bd19f822264791dac4f6730caa8642f65bd3810389bf982babfe",
+                "transactionIndex": "0x4",
+                "blockHash": "0xc1ff7931ceab1152c911cbb033bb5f6dad378263e3849cb7c5d90711fcbe352c",
+                "logIndex": "0x3",
+                "removed": false
+            }
+        ]
+    }"#;
+
+    pub const _MOCK_GET_LOGS_ERC20: &str = r#"{
         "jsonrpc": "2.0",
         "id": 3,
         "result": [
