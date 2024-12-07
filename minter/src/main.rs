@@ -295,7 +295,7 @@ async fn withdraw_native_token(
     // amount - withdrawal_native_fee
     let withdrawal_native_fee = read_state(|s| s.withdrawal_native_fee);
 
-    let native_transfer_fee = read_state(|s| s.native_transfer_fee);
+    let native_transfer_fee = read_state(|s| s.native_ledger_transfer_fee);
 
     let mut amount = Wei::try_from(amount).expect("failed to convert Nat to u256");
 
