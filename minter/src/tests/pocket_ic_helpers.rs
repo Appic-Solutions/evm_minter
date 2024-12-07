@@ -78,6 +78,9 @@ fn should_create_and_install_and_upgrade_minter_casniter() {
         evm_rpc_id: Some("7hfb6-caaaa-aaaar-qadga-cai".parse().unwrap()),
         helper_contract_address: None,
         block_height: None,
+        min_max_priority_fee_per_gas: None,
+        deposit_native_fee: None,
+        withdrawal_native_fee: None,
     });
     let upgrade_bytes = candid::encode_one(upgrade_args).unwrap();
 
@@ -251,6 +254,8 @@ fn install_minter_canister(pic: &PocketIc, canister_id: Principal) {
         last_scraped_block_number: Nat::from(45944445_u64),
         min_max_priority_fee_per_gas: Nat::from(3_000_000_000_u128),
         ledger_suite_manager_id: "kmcdp-4yaaa-aaaag-ats3q-cai".parse().unwrap(),
+        deposit_native_fee: Nat::from(0_u64),
+        withdrawal_native_fee: Nat::from(0_u64),
     });
     let init_bytes = candid::encode_one(init_args).unwrap();
 

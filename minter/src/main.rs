@@ -11,8 +11,8 @@ use evm_minter::endpoints::{
 };
 use evm_minter::endpoints::{
     Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, GasFeeEstimate, MinterInfo,
-    RetrieveNativeRequest, RetrieveNativeStatus, WithdrawalArg, WithdrawalDetail, WithdrawalError,
-    WithdrawalSearchParameter,
+    RetrieveNativeRequest, RetrieveWithdrawalStatus, WithdrawalArg, WithdrawalDetail,
+    WithdrawalError, WithdrawalSearchParameter,
 };
 use evm_minter::endpoints::{RetrieveErc20Request, WithdrawErc20Arg, WithdrawErc20Error};
 use evm_minter::erc20::ERC20Token;
@@ -341,7 +341,7 @@ async fn withdraw_native_token(
 }
 
 #[update]
-async fn retrieve_native_status(block_index: u64) -> RetrieveNativeStatus {
+async fn retrieve_witdrawal_status(block_index: u64) -> RetrieveWithdrawalStatus {
     let ledger_burn_index = LedgerBurnIndex::new(block_index);
     read_state(|s| {
         s.withdrawal_transactions
@@ -451,7 +451,7 @@ async fn withdraw_erc20(
                 erc20_withdrawal_amount,
                 erc20_token.erc20_token_symbol
             );
-            match LedgerClient::ckerc20_ledger(&erc20_token)
+            match LedgerClient::erc20_ledger(&erc20_token)
                 .burn_from(
                     caller.into(),
                     erc20_withdrawal_amount,

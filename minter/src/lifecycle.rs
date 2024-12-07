@@ -44,6 +44,10 @@ pub struct InitArg {
     pub min_max_priority_fee_per_gas: Nat,
     #[cbor(n(12), with = "crate::cbor::principal")]
     pub ledger_suite_manager_id: Principal,
+    #[cbor(n(13), with = "crate::cbor::nat")]
+    pub deposit_native_fee: Nat,
+    #[cbor(n(14), with = "crate::cbor::nat")]
+    pub withdrawal_native_fee: Nat,
 }
 
 impl TryFrom<InitArg> for State {
@@ -63,6 +67,8 @@ impl TryFrom<InitArg> for State {
             last_scraped_block_number,
             min_max_priority_fee_per_gas,
             ledger_suite_manager_id,
+            deposit_native_fee,
+            withdrawal_native_fee,
         }: InitArg,
     ) -> Result<Self, Self::Error> {
         use std::str::FromStr;
@@ -101,6 +107,28 @@ impl TryFrom<InitArg> for State {
                     )
                 })?;
 
+        // Conversion to Wei tag
+        let deposit_native_fee_converted = Wei::try_from(deposit_native_fee)
+            .map_err(|e| InvalidStateError::InvalidFeeInput(format!("ERROR: {}", e)))?;
+
+        // If fee is set to zero it should be remapped to None
+        let deposit_native_fee = if deposit_native_fee_converted == Wei::ZERO {
+            None
+        } else {
+            Some(deposit_native_fee_converted)
+        };
+
+        // Conversion to Wei tag
+        let withdrawal_native_fee_converted = Wei::try_from(withdrawal_native_fee)
+            .map_err(|e| InvalidStateError::InvalidFeeInput(format!("ERROR: {}", e)))?;
+
+        // If fee is set to zero it should be remapped to None
+        let withdrawal_native_fee = if withdrawal_native_fee_converted == Wei::ZERO {
+            None
+        } else {
+            Some(withdrawal_native_fee_converted)
+        };
+
         let state = Self {
             evm_network,
             ecdsa_key_name,
@@ -131,6 +159,8 @@ impl TryFrom<InitArg> for State {
             evm_canister_id: Principal::from_text("sosge-5iaaa-aaaag-alcla-cai").unwrap(),
             min_max_priority_fee_per_gas,
             swap_canister_id: None,
+            deposit_native_fee,
+            withdrawal_native_fee,
         };
         state.validate_config()?;
         Ok(state)
@@ -153,6 +183,12 @@ pub struct UpgradeArg {
     pub evm_rpc_id: Option<Principal>,
     #[cbor(n(6), with = "crate::cbor::nat::option")]
     pub native_ledger_transfer_fee: Option<Nat>,
+    #[cbor(n(7), with = "crate::cbor::nat::option")]
+    pub min_max_priority_fee_per_gas: Option<Nat>,
+    #[cbor(n(8), with = "crate::cbor::nat::option")]
+    pub deposit_native_fee: Option<Nat>,
+    #[cbor(n(9), with = "crate::cbor::nat::option")]
+    pub withdrawal_native_fee: Option<Nat>,
 }
 
 pub fn post_upgrade(upgrade_args: Option<UpgradeArg>) {

@@ -1,3 +1,5 @@
+use candid::Nat;
+
 use crate::numeric::wei_from_milli_ether;
 
 mod retrieve_eth_guard {
@@ -152,6 +154,8 @@ fn init_state() {
                 min_max_priority_fee_per_gas: candid::Nat::from(1000000_u128),
                 ledger_suite_manager_id: Principal::from_text("kmcdp-4yaaa-aaaag-ats3q-cai")
                     .expect("BUG: invalid principal"),
+                deposit_native_fee: Nat::from(0_u64),
+                withdrawal_native_fee: wei_from_milli_ether(1).into(),
             })
             .expect("init args should be valid"),
         );

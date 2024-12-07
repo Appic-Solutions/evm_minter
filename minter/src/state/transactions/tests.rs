@@ -30,7 +30,7 @@ const DEFAULT_ERC20_CONTRACT_ADDRESS: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce
 const DEFAULT_ERC20_LEDGER_ID: &str = "sa4so-piaaa-aaaar-qacnq-cai";
 
 mod withdrawal_transactions {
-    use crate::endpoints::{RetrieveNativeStatus, Transaction};
+    use crate::endpoints::{RetrieveWithdrawalStatus, Transaction};
     use crate::numeric::{LedgerBurnIndex, TransactionNonce};
     use crate::state::transactions::tests::{
         create_and_record_transaction, gas_fee_estimate, native_withdrawal_request_with_index,
@@ -1847,7 +1847,7 @@ mod withdrawal_transactions {
     }
 
     mod transaction_status {
-        use crate::endpoints::{RetrieveNativeStatus, TxFinalizedStatus};
+        use crate::endpoints::{RetrieveWithdrawalStatus, TxFinalizedStatus};
         use crate::numeric::{LedgerBurnIndex, LedgerMintIndex, TransactionNonce};
         use crate::state::transactions::tests::{
             create_twin_withdrawal_requests, erc20_withdrawal_request_with_index,
@@ -1923,7 +1923,7 @@ mod withdrawal_transactions {
             };
             assert_eq!(
                 transactions.transaction_status(&native_ledger_burn_index),
-                RetrieveNativeStatus::TxFinalized(success.clone())
+                RetrieveWithdrawalStatus::TxFinalized(success.clone())
             );
             assert_withdrawal_status(
                 &transactions,
@@ -1946,7 +1946,7 @@ mod withdrawal_transactions {
             let pending_reimbursedment = TxFinalizedStatus::PendingReimbursement((&receipt).into());
             assert_eq!(
                 transactions.transaction_status(&native_ledger_burn_index),
-                RetrieveNativeStatus::TxFinalized(pending_reimbursedment.clone())
+                RetrieveWithdrawalStatus::TxFinalized(pending_reimbursedment.clone())
             );
             assert_withdrawal_status(
                 &transactions,
@@ -1978,7 +1978,7 @@ mod withdrawal_transactions {
             };
             assert_eq!(
                 transactions.transaction_status(&native_ledger_burn_index),
-                RetrieveNativeStatus::TxFinalized(reimbursed.clone())
+                RetrieveWithdrawalStatus::TxFinalized(reimbursed.clone())
             );
             assert_withdrawal_status(
                 &transactions,
@@ -2004,7 +2004,7 @@ mod withdrawal_transactions {
             let pending_reimbursement = TxFinalizedStatus::PendingReimbursement((&receipt).into());
             assert_eq!(
                 transactions.transaction_status(&native_ledger_burn_index),
-                RetrieveNativeStatus::TxFinalized(pending_reimbursement.clone())
+                RetrieveWithdrawalStatus::TxFinalized(pending_reimbursement.clone())
             );
             assert_withdrawal_status(
                 &transactions,
@@ -2029,7 +2029,7 @@ mod withdrawal_transactions {
             };
             assert_eq!(
                 transactions.transaction_status(&native_ledger_burn_index),
-                RetrieveNativeStatus::TxFinalized(reimbursed.clone())
+                RetrieveWithdrawalStatus::TxFinalized(reimbursed.clone())
             );
             assert_withdrawal_status(
                 &transactions,
@@ -2053,7 +2053,7 @@ mod withdrawal_transactions {
 
             assert_eq!(
                 transactions.transaction_status(&reimbursement_index.withdrawal_id()),
-                RetrieveNativeStatus::TxFinalized(TxFinalizedStatus::PendingReimbursement(
+                RetrieveWithdrawalStatus::TxFinalized(TxFinalizedStatus::PendingReimbursement(
                     (&receipt).into()
                 ))
             );
@@ -2073,13 +2073,13 @@ mod withdrawal_transactions {
 
         assert_eq!(
             transactions.transaction_status(&native_ledger_burn_index),
-            RetrieveNativeStatus::NotFound
+            RetrieveWithdrawalStatus::NotFound
         );
         assert_withdrawal_status(transactions, &withdrawal_request.clone(), vec![]);
         transactions.record_withdrawal_request(withdrawal_request.clone());
         assert_eq!(
             transactions.transaction_status(&native_ledger_burn_index),
-            RetrieveNativeStatus::Pending
+            RetrieveWithdrawalStatus::Pending
         );
         assert_withdrawal_status(
             transactions,
@@ -2094,7 +2094,7 @@ mod withdrawal_transactions {
         );
         assert_eq!(
             transactions.transaction_status(&native_ledger_burn_index),
-            RetrieveNativeStatus::TxCreated
+            RetrieveWithdrawalStatus::TxCreated
         );
         assert_withdrawal_status(
             transactions,
@@ -2109,7 +2109,7 @@ mod withdrawal_transactions {
         transactions.record_signed_transaction(signed_tx.clone());
         assert_eq!(
             transactions.transaction_status(&native_ledger_burn_index),
-            RetrieveNativeStatus::TxSent(eth_transaction.clone())
+            RetrieveWithdrawalStatus::TxSent(eth_transaction.clone())
         );
         assert_withdrawal_status(
             transactions,

@@ -4,8 +4,8 @@ use candid::{Nat, Principal};
 
 use crate::{
     endpoints::{
-        Eip1559TransactionPrice, RequestScrapingError, RetrieveNativeRequest, RetrieveNativeStatus,
-        TxFinalizedStatus, WithdrawalArg, WithdrawalError,
+        Eip1559TransactionPrice, RequestScrapingError, RetrieveNativeRequest,
+        RetrieveWithdrawalStatus, TxFinalizedStatus, WithdrawalArg, WithdrawalError,
     },
     tests::pocket_ic_helpers::{five_ticks, native_ledger_principal, update_call},
     PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_INTERVAL,
@@ -275,15 +275,15 @@ fn should_deposit_and_withdrawal_native() {
     five_ticks(&pic);
 
     // The transaction should be included into finalized transaction list.
-    let get_withdrawal_transaction_by_block_index = update_call::<u64, RetrieveNativeStatus>(
+    let get_withdrawal_transaction_by_block_index = update_call::<u64, RetrieveWithdrawalStatus>(
         &pic,
         minter_principal(),
-        "retrieve_native_status",
+        "retrieve_witdrawal_status",
         2_u64,
         None,
     );
     let expected_transaction_result =
-        RetrieveNativeStatus::TxFinalized(TxFinalizedStatus::Success {
+        RetrieveWithdrawalStatus::TxFinalized(TxFinalizedStatus::Success {
             transaction_hash: "0x7a2b7ec2713dd7d5b6539ff683fab66003ad76b9920a9da309558b2e2f8ab3c8"
                 .to_string(),
             effective_transaction_fee: Some(Nat::from(63000000000000_u128)),
@@ -357,7 +357,7 @@ fn should_not_deposit_twice() {
     // follow the same steps but this time we will mock http requests with incorrect responses
     // to check if minter, mints the same reuest twice or not.
 
-    // / At this time there should be 1 http reuests:
+    // At this time there should be 1 http reuests:
     // [0] is for eth_getBlockByNumber
     let canister_http_requests = pic.get_canister_http();
 

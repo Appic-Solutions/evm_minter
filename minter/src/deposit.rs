@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::time::Duration;
 
+use candid::Nat;
 use ic_canister_log::log;
 use icrc_ledger_types::icrc1::account::Account;
 use scopeguard::ScopeGuard;
@@ -22,6 +23,7 @@ use crate::rpc_declrations::Topic;
 use crate::rpc_declrations::{BlockSpec, GetLogsParam};
 use crate::state::audit::{process_event, EventType};
 use crate::state::{mutate_state, read_state, State, TaskType};
+use crate::FEES_SUBACCOUNT;
 use num_traits::ToPrimitive;
 
 async fn mint() {
@@ -35,6 +37,9 @@ async fn mint() {
 
     let (native_ledger_canister_id, events) =
         read_state(|s| (s.native_ledger_id, s.events_to_mint()));
+
+    let deposit_native_fee = read_state(|s| s.deposit_native_fee).map(|fee| Nat::from(fee));
+
     let mut error_count = 0;
 
     for event in events {
@@ -50,13 +55,15 @@ async fn mint() {
                 )
             });
         });
-        let (token_symbol, ledger_canister_id) = match &event {
-            ReceivedDepositEvent::Native(_) => ("Native".to_string(), native_ledger_canister_id),
+        let (token_symbol, ledger_canister_id, is_native_deposit) = match &event {
+            ReceivedDepositEvent::Native(_) => {
+                ("Native".to_string(), native_ledger_canister_id, true)
+            }
             ReceivedDepositEvent::Erc20(event) => {
                 if let Some(result) = read_state(|s| {
                     s.erc20_tokens
                         .get_entry_alt(&event.erc20_contract_address)
-                        .map(|(principal, symbol)| (symbol.to_string(), *principal))
+                        .map(|(principal, symbol)| (symbol.to_string(), *principal, false))
                 }) {
                     result
                 } else {
@@ -70,6 +77,14 @@ async fn mint() {
             runtime: CdkRuntime,
             ledger_canister_id,
         };
+
+        let amount = calculate_deposit_amount_deducting_fee(
+            event.value(),
+            &deposit_native_fee,
+            is_native_deposit,
+        );
+
+        // Mint tokens for the user
         let block_index = match client
             .transfer(TransferArg {
                 from_subaccount: None,
@@ -80,7 +95,7 @@ async fn mint() {
                 fee: None,
                 created_at_time: None,
                 memo: Some((&event).into()),
-                amount: event.value(),
+                amount: amount.clone(),
             })
             .await
         {
@@ -103,6 +118,50 @@ async fn mint() {
                 continue;
             }
         };
+
+        // In case the deposit is native and there is deposit fee,
+        // Mint the fees for the fee collector account
+        // If minting tokens is successful and minting deposit fees fails,
+        // The minting process will be considered as successful and will not go for another iteration,
+        // To prevent double minting
+        match deposit_native_fee {
+            Some(ref deposit_fee) => {
+                if is_native_deposit {
+                    // Minting depost fees in minters fee collector subaccount
+                    match client
+                        .transfer(TransferArg {
+                            from_subaccount: None,
+                            to: Account {
+                                owner: ic_cdk::id(),
+                                subaccount: Some(FEES_SUBACCOUNT),
+                            },
+                            fee: None,
+                            created_at_time: None,
+                            memo: None,
+                            amount: deposit_fee.clone(),
+                        })
+                        .await
+                    {
+                        Ok(Ok(block_index)) => {
+                            log!(INFO, "Minted {} in block {}", deposit_fee, block_index);
+                        }
+                        Ok(Err(err)) => {
+                            log!(
+                                INFO,
+                                "Failed to minter fees {}: {err:?}",
+                                deposit_fee.clone()
+                            );
+                        }
+                        Err(err) => {
+                            log!(INFO,"Failed to send a message to the ledger for miting fees({ledger_canister_id}): {err:?}");
+                        }
+                    };
+                };
+            }
+            None => {}
+        };
+
+        // Record event
         mutate_state(|s| {
             process_event(
                 s,
@@ -123,9 +182,10 @@ async fn mint() {
         });
         log!(
             INFO,
-            "Minted {} {token_symbol} to {} in block {block_index}",
-            event.value(),
-            event.principal()
+            "Minted {} {token_symbol} to {} in block {block_index} deducting {:?} in fees",
+            amount,
+            event.principal(),
+            deposit_native_fee
         );
         // minting succeeded, defuse guard
         ScopeGuard::into_inner(prevent_double_minting_guard);
@@ -433,4 +493,21 @@ pub fn validate_log_scraping_request(
     }
 
     Ok(())
+}
+
+pub fn calculate_deposit_amount_deducting_fee(
+    amount: Nat,
+    deposit_native_fee: &Option<Nat>,
+    is_native_deposit: bool,
+) -> candid::Nat {
+    // Calculate Amount - Deposit fee
+    if is_native_deposit {
+        // If there is a deposit fee
+        match deposit_native_fee {
+            Some(fee) => amount - fee.clone(),
+            None => amount,
+        }
+    } else {
+        amount
+    }
 }

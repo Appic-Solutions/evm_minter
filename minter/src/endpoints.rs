@@ -148,7 +148,7 @@ impl From<NativeWithdrawalRequest> for RetrieveNativeRequest {
 }
 
 #[derive(CandidType, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub enum RetrieveNativeStatus {
+pub enum RetrieveWithdrawalStatus {
     NotFound,
     Pending,
     TxCreated,
@@ -170,14 +170,14 @@ pub enum TxFinalizedStatus {
     },
 }
 
-impl Display for RetrieveNativeStatus {
+impl Display for RetrieveWithdrawalStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            RetrieveNativeStatus::NotFound => write!(f, "Not Found"),
-            RetrieveNativeStatus::Pending => write!(f, "Pending"),
-            RetrieveNativeStatus::TxCreated => write!(f, "Created"),
-            RetrieveNativeStatus::TxSent(tx) => write!(f, "Sent({})", tx.transaction_hash),
-            RetrieveNativeStatus::TxFinalized(tx_status) => match tx_status {
+            RetrieveWithdrawalStatus::NotFound => write!(f, "Not Found"),
+            RetrieveWithdrawalStatus::Pending => write!(f, "Pending"),
+            RetrieveWithdrawalStatus::TxCreated => write!(f, "Created"),
+            RetrieveWithdrawalStatus::TxSent(tx) => write!(f, "Sent({})", tx.transaction_hash),
+            RetrieveWithdrawalStatus::TxFinalized(tx_status) => match tx_status {
                 TxFinalizedStatus::Success {
                     transaction_hash, ..
                 } => write!(f, "Confirmed({})", transaction_hash),

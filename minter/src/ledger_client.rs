@@ -1,7 +1,3 @@
-// use crate::erc20::{CkErc20Token, CkTokenSymbol};
-// use crate::logs::DEBUG;
-// use crate::memo::BurnMemo;
-// use crate::numeric::LedgerBurnIndex;
 use crate::{
     erc20::ERC20Token, logs::DEBUG, memo::BurnMemo, numeric::LedgerBurnIndex, state::State,
 };
@@ -13,9 +9,6 @@ use icrc_ledger_types::{
     icrc1::{account::Account, transfer::Memo},
     icrc2::transfer_from::{TransferFromArgs, TransferFromError},
 };
-// use icrc_ledger_types::icrc1::account::Account;
-// use icrc_ledger_types::icrc1::transfer::Memo;
-// use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 use num_traits::ToPrimitive;
 
 use crate::erc20::ERC20TokenSymbol;
@@ -65,7 +58,7 @@ impl LedgerClient {
         }
     }
 
-    pub fn ckerc20_ledger(token: &ERC20Token) -> Self {
+    pub fn erc20_ledger(token: &ERC20Token) -> Self {
         Self {
             token_symbol: token.erc20_token_symbol.clone(),
             client: ICRC1Client {
@@ -103,7 +96,7 @@ impl LedgerClient {
                 log!(
                     DEBUG,
                     "[burn]: failed to transfer_from from the {:?} ledger with error: {transfer_from_error:?}",
-                    self.erc20_ledger()
+                    self.native_ldger()
                 );
                 let burn_error = match transfer_from_error {
                     TransferFromError::BadFee { expected_fee } => {
@@ -113,21 +106,21 @@ impl LedgerClient {
                         LedgerBurnError::AmountTooLow {
                             minimum_burn_amount: min_burn_amount,
                             failed_burn_amount: amount.clone(),
-                            ledger: self.erc20_ledger(),
+                            ledger: self.native_ldger(),
                         }
                     }
                     TransferFromError::InsufficientFunds { balance } => {
                         LedgerBurnError::InsufficientFunds {
                             balance,
                             failed_burn_amount: amount.clone(),
-                            ledger: self.erc20_ledger(),
+                            ledger: self.native_ldger(),
                         }
                     }
                     TransferFromError::InsufficientAllowance { allowance } => {
                         LedgerBurnError::InsufficientAllowance {
                             allowance,
                             failed_burn_amount: amount,
-                            ledger: self.erc20_ledger(),
+                            ledger: self.native_ldger(),
                         }
                     }
                     TransferFromError::TooOld => panic!("BUG: transfer too old"),
@@ -143,7 +136,7 @@ impl LedgerClient {
                                 "{} ledger temporarily unavailable, try again",
                                 self.token_symbol
                             ),
-                            ledger: self.erc20_ledger(),
+                            ledger: self.native_ldger(),
                         }
                     }
                     TransferFromError::GenericError {
@@ -154,7 +147,7 @@ impl LedgerClient {
                         "{} ledger unreachable, error code: {error_code}, with message: {message}",
                         self.token_symbol
                     ),
-                        ledger: self.erc20_ledger(),
+                        ledger: self.native_ldger(),
                     },
                 };
                 Err(burn_error)
@@ -167,13 +160,13 @@ impl LedgerClient {
                 log!(DEBUG, "[burn]: {err_msg}",);
                 Err(LedgerBurnError::TemporarilyUnavailable {
                     message: err_msg,
-                    ledger: self.erc20_ledger(),
+                    ledger: self.native_ldger(),
                 })
             }
         }
     }
 
-    fn erc20_ledger(&self) -> ERC20Ledger {
+    fn native_ldger(&self) -> ERC20Ledger {
         ERC20Ledger {
             token_symbol: self.token_symbol.clone(),
             id: self.client.ledger_canister_id,

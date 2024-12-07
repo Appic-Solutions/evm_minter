@@ -79,6 +79,7 @@ pub enum InvalidStateError {
     InvalidMinimumLedgerTransferFee(String),
     InvalidLastScrapedBlockNumber(String),
     InvalidMinimumMaximumPriorityFeePerGas(String),
+    InvalidFeeInput(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -140,6 +141,14 @@ pub struct State {
     // Used to correlate request and response in logs.
     // pub http_request_counter: u64,
     pub last_transaction_price_estimate: Option<(u64, GasFeeEstimate)>,
+
+    // Fees taken per deposit and withdrawal in natvie token format
+    // Option types, since the opration can be free as well
+    // If the deposit type is Erc20, Fees will be free cause fees will be charged in native token wei format
+    // How ever for withdrawal users need native token anyways so we can charge them with fees in twin natvie token
+    // Withdrawal fees should cover cycles cost for signing messages
+    pub deposit_native_fee: Option<Wei>,
+    pub withdrawal_native_fee: Option<Wei>,
 
     // Canister ID of the ledger suite manager that
     // can add new ERC-20 token to the minter
@@ -491,6 +500,9 @@ impl State {
             last_scraped_block_number,
             evm_rpc_id,
             native_ledger_transfer_fee,
+            min_max_priority_fee_per_gas,
+            deposit_native_fee,
+            withdrawal_native_fee,
         } = upgrade_args;
         if let Some(nonce) = next_transaction_nonce {
             let nonce = TransactionNonce::try_from(nonce)
@@ -510,6 +522,18 @@ impl State {
             })?;
             self.native_ledger_transfer_fee = native_ledger_transfer_fee;
         }
+
+        if let Some(min_max_priority_per_gas) = min_max_priority_fee_per_gas {
+            let min_max_priority_fee_per_gas = WeiPerGas::try_from(min_max_priority_per_gas)
+                .map_err(|e| {
+                    InvalidStateError::InvalidMinimumMaximumPriorityFeePerGas(format!(
+                        "ERROR: {}",
+                        e
+                    ))
+                })?;
+            self.min_max_priority_fee_per_gas = min_max_priority_fee_per_gas;
+        }
+
         if let Some(address) = helper_contract_address {
             let helper_contract_address = Address::from_str(&address).map_err(|e| {
                 InvalidStateError::InvalidHelperContractAddress(format!("ERROR: {}", e))
@@ -529,6 +553,37 @@ impl State {
         if let Some(evm_id) = evm_rpc_id {
             self.evm_canister_id = evm_id;
         }
+
+        if let Some(deposit_native_fee) = deposit_native_fee {
+            // Conversion to Wei tag
+            let deposit_native_fee_converted = Wei::try_from(deposit_native_fee)
+                .map_err(|e| InvalidStateError::InvalidFeeInput(format!("ERROR: {}", e)))?;
+
+            // If fee is set to zero it should be remapped to None
+            let deposit_native_fee = if deposit_native_fee_converted == Wei::ZERO {
+                None
+            } else {
+                Some(deposit_native_fee_converted)
+            };
+
+            self.deposit_native_fee = deposit_native_fee;
+        }
+
+        if let Some(withdrawal_native_fee) = withdrawal_native_fee {
+            // Conversion to Wei tag
+            let withdrawal_native_fee_converted = Wei::try_from(withdrawal_native_fee)
+                .map_err(|e| InvalidStateError::InvalidFeeInput(format!("ERROR: {}", e)))?;
+
+            // If fee is set to zero it should be remapped to None
+            let withdrawal_native_fee = if withdrawal_native_fee_converted == Wei::ZERO {
+                None
+            } else {
+                Some(withdrawal_native_fee_converted)
+            };
+
+            self.withdrawal_native_fee = withdrawal_native_fee;
+        }
+
         self.validate_config()
     }
 }

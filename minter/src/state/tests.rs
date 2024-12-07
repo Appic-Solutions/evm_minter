@@ -48,6 +48,8 @@ fn initial_state() -> State {
         min_max_priority_fee_per_gas: Wei::new(15000).into(),
         ledger_suite_manager_id: Principal::from_text("kmcdp-4yaaa-aaaag-ats3q-cai")
             .expect("BUG: invalid principal"),
+        deposit_native_fee: wei_from_milli_ether(1).into(),
+        withdrawal_native_fee: wei_from_milli_ether(1).into(),
     })
     .expect("init args should be valid")
 }
@@ -563,24 +565,12 @@ prop_compose! {
         min_max_priority_fee_per_gas in arb_nat(),
         native_ledger_transfer_fee in arb_nat(),
         native_symbol in "[a-z_]*",
-        ledger_suite_manager_id in arb_principal()
-    ) -> InitArg {
-        InitArg {
-            evm_network: EvmNetwork::Sepolia,
-            ecdsa_key_name,
-            helper_contract_address: contract_address.map(|addr| addr.to_string()),
-            native_ledger_id,
-            native_index_id,
-            block_height,
-            native_minimum_withdrawal_amount,
-            next_transaction_nonce,
-            last_scraped_block_number,
-            min_max_priority_fee_per_gas,
-            native_ledger_transfer_fee,
-            native_symbol,
-            ledger_suite_manager_id,
+        ledger_suite_manager_id in arb_principal(),
+        deposit_native_fee in arb_nat(),
+        withdrawal_native_fee in arb_nat()
 
-        }
+    ) -> InitArg {
+        InitArg {evm_network:EvmNetwork::Sepolia,ecdsa_key_name,helper_contract_address:contract_address.map(|addr|addr.to_string()),native_ledger_id,native_index_id,block_height,native_minimum_withdrawal_amount,next_transaction_nonce,last_scraped_block_number,min_max_priority_fee_per_gas,native_ledger_transfer_fee,native_symbol,ledger_suite_manager_id, deposit_native_fee, withdrawal_native_fee }
     }
 }
 
@@ -593,16 +583,11 @@ prop_compose! {
         last_scraped_block_number in proptest::option::of(arb_nat()),
         evm_rpc_id in proptest::option::of(arb_principal()),
         native_ledger_transfer_fee in proptest::option::of(arb_nat()),
+        min_max_priority_fee_per_gas in proptest::option::of(arb_nat()),
+        deposit_native_fee in proptest::option::of(arb_nat()),
+        withdrawal_native_fee in proptest::option::of(arb_nat())
     ) -> UpgradeArg {
-        UpgradeArg {
-            helper_contract_address: contract_address.map(|addr| addr.to_string()),
-            block_height,
-            native_minimum_withdrawal_amount,
-            next_transaction_nonce,
-            last_scraped_block_number,
-            evm_rpc_id,
-            native_ledger_transfer_fee
-        }
+        UpgradeArg {helper_contract_address:contract_address.map(|addr|addr.to_string()),block_height,native_minimum_withdrawal_amount,next_transaction_nonce,last_scraped_block_number,evm_rpc_id,native_ledger_transfer_fee,min_max_priority_fee_per_gas, deposit_native_fee, withdrawal_native_fee }
     }
 }
 
@@ -1035,6 +1020,8 @@ fn state_equivalence() {
         ledger_suite_manager_id: None,
         swap_canister_id: None,
         last_observed_block_time: None,
+        deposit_native_fee: None,
+        withdrawal_native_fee: None,
     };
 
     assert_eq!(
