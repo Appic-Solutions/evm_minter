@@ -78,6 +78,9 @@ async fn mint() {
             ledger_canister_id,
         };
 
+        // If deposit type is native_deposit and the fees are not set to zero,
+        // The minted amount for user should be as follow
+        // event.value() - deposit_native_fee
         let amount = calculate_deposit_amount_deducting_fee(
             event.value(),
             &deposit_native_fee,
@@ -124,9 +127,9 @@ async fn mint() {
         // If minting tokens is successful and minting deposit fees fails,
         // The minting process will be considered as successful and will not go for another iteration,
         // To prevent double minting
-        match deposit_native_fee {
-            Some(ref deposit_fee) => {
-                if is_native_deposit {
+        if is_native_deposit {
+            match deposit_native_fee {
+                Some(ref deposit_fee) => {
                     // Minting depost fees in minters fee collector subaccount
                     match client
                         .transfer(TransferArg {
@@ -156,9 +159,9 @@ async fn mint() {
                             log!(INFO,"Failed to send a message to the ledger for miting fees({ledger_canister_id}): {err:?}");
                         }
                     };
-                };
+                }
+                None => {}
             }
-            None => {}
         };
 
         // Record event

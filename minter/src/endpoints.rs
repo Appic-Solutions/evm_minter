@@ -1,5 +1,5 @@
 use crate::eth_types::Address;
-use crate::ledger_client::LedgerBurnError;
+use crate::ledger_client::{FeeTransferError, LedgerBurnError};
 // // use crate::rpc_client::responses::TransactionReceipt;
 // // use crate::ledger_client::LedgerBurnError;
 use crate::numeric::LedgerBurnIndex;
@@ -231,6 +231,29 @@ impl From<LedgerBurnError> for WithdrawalError {
                 ledger,
             } => {
                 panic!("BUG: withdrawal amount {failed_burn_amount} on the Native ledger {ledger:?} should always be higher than the ledger transaction fee {minimum_burn_amount}")
+            }
+        }
+    }
+}
+
+impl From<FeeTransferError> for WithdrawalError {
+    fn from(error: FeeTransferError) -> Self {
+        match error {
+            FeeTransferError::TemporarilyUnavailable { message, .. } => {
+                Self::TemporarilyUnavailable(message)
+            }
+            FeeTransferError::InsufficientFunds { balance, .. } => {
+                Self::InsufficientFunds { balance }
+            }
+            FeeTransferError::InsufficientAllowance { allowance, .. } => {
+                Self::InsufficientAllowance { allowance }
+            }
+            FeeTransferError::AmountTooLow {
+                minimum_transfer_amount,
+                failed_transfer_amount,
+                ledger,
+            } => {
+                panic!("BUG: withdrawal amount {failed_transfer_amount} on the Native ledger {ledger:?} should always be higher than the ledger transaction fee {minimum_transfer_amount}")
             }
         }
     }

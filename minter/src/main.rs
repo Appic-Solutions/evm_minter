@@ -290,7 +290,13 @@ async fn withdraw_native_token(
         }
     })?;
 
-    let amount = Wei::try_from(amount).expect("failed to convert Nat to u256");
+    // If withdrawal_native_fee is some, the total transaction value should be as follow
+    // amount - withdrawal_native_fee
+    let withdrawal_native_fee = read_state(|s| s.withdrawal_native_fee);
+
+    let native_ledger_transfer_fee = read_state(|s| s.native_ledger_transfer_fee);
+
+    let mut amount = Wei::try_from(amount).expect("failed to convert Nat to u256");
 
     let minimum_withdrawal_amount = read_state(|s| s.native_minimum_withdrawal_amount);
     if amount < minimum_withdrawal_amount {
@@ -298,6 +304,45 @@ async fn withdraw_native_token(
             min_withdrawal_amount: minimum_withdrawal_amount.into(),
         });
     }
+
+    // Fee transfer and calculation
+    // The amount of transferred fee is as follow
+    // withdrawal_native_fee - native_ledger_transfer_fee
+    // Fee transfer will only be triggered if
+    // withdrawal_native_fee is Some(Wei)
+    let _fee_transfer_result = match withdrawal_native_fee {
+        Some(withdrawal_fee) => {
+            let client = read_state(LedgerClient::native_ledger_from_state);
+            let transfer_amount = withdrawal_fee
+                .checked_sub(native_ledger_transfer_fee)
+                .expect("Failed to calculate withdrawal fee");
+            log!(
+                INFO,
+                "[withdraw]: Transferring Withdrawal fee {:?}",
+                withdrawal_fee
+            );
+            match client
+                .trasnfer_withdrawal_fee(caller.into(), transfer_amount)
+                .await
+            {
+                Ok(block_index) => {
+                    log!(
+                        INFO,
+                        "Transferred Withdrawal fee to minter with block {}",
+                        block_index
+                    );
+
+                    // Deducting withdrawal_fee from witdrawal amount
+                    amount = amount
+                        .checked_sub(withdrawal_fee)
+                        .expect("Failed calculating witdrawal amount");
+                    Ok(())
+                }
+                Err(err) => Err(WithdrawalError::from(err)),
+            }
+        }
+        None => Ok(()),
+    }?;
 
     let client = read_state(LedgerClient::native_ledger_from_state);
     let now = ic_cdk::api::time();
