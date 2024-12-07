@@ -7,7 +7,7 @@ use evm_minter::endpoints::events::{
 };
 
 use evm_minter::endpoints::{
-    self, AddErc20Token, Icrc28TrustedOriginsResponse, RequestScrapingError,
+    self, AddErc20Token, FeeError, Icrc28TrustedOriginsResponse, LedgerError, RequestScrapingError,
 };
 use evm_minter::endpoints::{
     Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, GasFeeEstimate, MinterInfo,
@@ -475,6 +475,45 @@ async fn withdraw_erc20(
     let erc20_tx_fee = estimate_erc20_transaction_fee().await.ok_or_else(|| {
         WithdrawErc20Error::TemporarilyUnavailable("Failed to retrieve current gas fee".to_string())
     })?;
+
+    // Witdrawal fee deducted in native token
+    let withdrawal_native_fee = read_state(|s| s.withdrawal_native_fee);
+
+    // Fee transfer and calculation
+    // The amount of transferred fee is as follow:
+    // withdrawal_native_fee - native_transfer_fee
+    let _fee_transfer_result = match withdrawal_native_fee {
+        Some(withdrawal_fee) => {
+            let client = read_state(LedgerClient::native_ledger_from_state);
+            let transfer_amount = withdrawal_fee
+                .checked_sub(native_transfer_fee)
+                .expect("Failed to calculate withdrawal fee");
+            log!(
+                INFO,
+                "[withdraw]: Transferring Withdrawal fee {:?}",
+                withdrawal_fee
+            );
+            match client
+                .trasnfer_withdrawal_fee(caller.into(), transfer_amount)
+                .await
+            {
+                Ok(block_index) => {
+                    log!(
+                        INFO,
+                        "Transferred Withdrawal fee to minter with block {}",
+                        block_index
+                    );
+
+                    Ok(())
+                }
+                Err(err) => Err(WithdrawErc20Error::NativeFeeTransferError {
+                    error: FeeError::from(err),
+                }),
+            }
+        }
+        None => Ok(()),
+    }?;
+
     let now = ic_cdk::api::time();
     log!(INFO, "[withdraw_erc20]: burning {:?} ckETH", erc20_tx_fee);
     match native_ledger
@@ -542,10 +581,18 @@ async fn withdraw_erc20(
                             .checked_sub(native_transfer_fee)
                             .unwrap_or(Wei::ZERO),
                     };
+
+                    let reimbursed_amount_plus_withdrawal_fee = match withdrawal_native_fee {
+                        Some(withdrawal_fee) => reimbursed_amount
+                            .checked_add(withdrawal_fee)
+                            .unwrap_or(reimbursed_amount),
+                        None => reimbursed_amount,
+                    };
+
                     if reimbursed_amount > Wei::ZERO {
                         let reimbursement_request = ReimbursementRequest {
                             ledger_burn_index: native_ledger_burn_index,
-                            reimbursed_amount: reimbursed_amount.change_units(),
+                            reimbursed_amount: reimbursed_amount_plus_withdrawal_fee.change_units(),
                             to: caller,
                             to_subaccount: None,
                             transaction_hash: None,

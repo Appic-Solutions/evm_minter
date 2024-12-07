@@ -537,6 +537,10 @@ pub enum WithdrawErc20Error {
     NativeLedgerError {
         error: LedgerError,
     },
+
+    NativeFeeTransferError {
+        error: FeeError,
+    },
     Erc20LedgerError {
         native_block_index: Nat,
         error: LedgerError,
@@ -601,6 +605,69 @@ impl From<LedgerBurnError> for LedgerError {
             } => LedgerError::AmountTooLow {
                 minimum_burn_amount,
                 failed_burn_amount,
+                token_symbol: ledger.token_symbol.to_string(),
+                ledger_id: ledger.id,
+            },
+        }
+    }
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug, PartialEq)]
+pub enum FeeError {
+    InsufficientFunds {
+        balance: Nat,
+        failed_transfer_amount: Nat,
+        token_symbol: String,
+        ledger_id: Principal,
+    },
+    AmountTooLow {
+        minimum_transfer_amount: Nat,
+        failed_transfer_amount: Nat,
+        token_symbol: String,
+        ledger_id: Principal,
+    },
+    InsufficientAllowance {
+        allowance: Nat,
+        failed_transfer_amount: Nat,
+        token_symbol: String,
+        ledger_id: Principal,
+    },
+    TemporarilyUnavailable(String),
+}
+
+impl From<FeeTransferError> for FeeError {
+    fn from(error: FeeTransferError) -> Self {
+        match error {
+            FeeTransferError::TemporarilyUnavailable { message, .. } => {
+                FeeError::TemporarilyUnavailable(message)
+            }
+            FeeTransferError::InsufficientFunds {
+                balance,
+                failed_transfer_amount,
+                ledger,
+            } => FeeError::InsufficientFunds {
+                balance,
+                failed_transfer_amount,
+                token_symbol: ledger.token_symbol.to_string(),
+                ledger_id: ledger.id,
+            },
+            FeeTransferError::InsufficientAllowance {
+                allowance,
+                failed_transfer_amount,
+                ledger,
+            } => FeeError::InsufficientAllowance {
+                allowance,
+                failed_transfer_amount,
+                token_symbol: ledger.token_symbol.to_string(),
+                ledger_id: ledger.id,
+            },
+            FeeTransferError::AmountTooLow {
+                minimum_transfer_amount,
+                failed_transfer_amount,
+                ledger,
+            } => FeeError::AmountTooLow {
+                minimum_transfer_amount,
+                failed_transfer_amount,
                 token_symbol: ledger.token_symbol.to_string(),
                 ledger_id: ledger.id,
             },
