@@ -1,6 +1,5 @@
 use candid::{CandidType, Deserialize, Nat, Principal};
 use icrc_ledger_types::icrc2::transfer_from::TransferFromError;
-use pocket_ic::common::rest::{CanisterHttpReply, CanisterHttpResponse, MockCanisterHttpResponse};
 
 type ChainId = Nat;
 
@@ -157,21 +156,4 @@ pub struct LedgerManagerInfo {
     pub ledger_suite_version: Option<LedgerSuiteVersion>,
     pub ls_creation_icp_fee: Nat,
     pub ls_creation_appic_fee: Option<Nat>,
-}
-
-pub fn generate_successful_mock_response(
-    subnet_id: Principal,
-    request_id: u64,
-    body: Vec<u8>,
-) -> MockCanisterHttpResponse {
-    MockCanisterHttpResponse {
-        subnet_id,
-        request_id,
-        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
-            status: 200,
-            headers: vec![],
-            body: body.to_vec(),
-        }),
-        additional_responses: vec![],
-    }
 }

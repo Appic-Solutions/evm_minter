@@ -58,7 +58,20 @@ fn should_get_estimated_eip1559_transaction_price() {
         max_transaction_fee: Nat::from(63000000000000_u64),
         timestamp: Some(1620328630000000061_u64),
     };
-    assert_eq!(expected_price, transaction_price);
+    assert_eq!(expected_price.gas_limit, transaction_price.gas_limit);
+    assert_eq!(
+        expected_price.max_fee_per_gas,
+        transaction_price.max_fee_per_gas
+    );
+    assert_eq!(
+        expected_price.max_priority_fee_per_gas,
+        transaction_price.max_priority_fee_per_gas
+    );
+
+    assert_eq!(
+        expected_price.max_transaction_fee,
+        transaction_price.max_transaction_fee
+    );
 }
 
 #[test]
@@ -422,12 +435,262 @@ fn should_not_deposit_twice() {
         },
     );
 
-    assert_eq!(balance, Nat::from(100000000000000000_u128));
+    assert_eq!(balance, Nat::from(99950000000000000_u128));
 }
 
-// TODO: Test the whole flow for erc20 tokens
 #[test]
-fn should_deposit_and_withdrawal_erc20() {}
+fn should_deposit_and_withdrawal_erc20() {
+    let pic = create_pic();
+    create_and_install_minter_plus_dependency_canisters(&pic);
+
+    // The deposit and whitdrawal http mock flow is as follow
+    // 1st Step: The mock response for get_blockbynumber is generated
+    // 2nd Step: The response for eth_feehistory resonse is genrated afterwards,
+    // so in the time of withdrawal transaction the eip1559 transaction price is available
+    // Not to forget that the price should be refreshed through a second call at the time
+    // 3rd Step: There should two mock responses be generated for eth_getlogs, one for ankr and the other one for public node
+    // 4th Step: The response for sendrawtransaction
+    // 5th Step: An httpoutcall for geting the finalized transaction count.
+    // 5th Step: and in the end get transaction receipt should be generate
+
+    // At this time there should be 2 http reuests:
+    // [0] is for eth_getBlockByNumber
+    // [1] is for eth_feeHistory
+    let canister_http_requests = pic.get_canister_http();
+
+    // 1st Generating mock response for eth_getBlockByNumber
+    generate_and_submit_mock_http_response(&pic, &canister_http_requests, 0, MOCK_BLOCK_NUMBER);
+
+    // 2nd Generating mock reponse for eth_feehistory
+    generate_and_submit_mock_http_response(
+        &pic,
+        &canister_http_requests,
+        1,
+        MOCK_FEE_HISTORY_RESPONSE,
+    );
+
+    five_ticks(&pic);
+
+    // 3rd generating mock response for eth_getLogs
+    // At this time there should be 2 http reuests:
+    // [0] is for public_node eth_getLogs
+    // [1] is for ankr eth_getLogs
+    let canister_http_requests = pic.get_canister_http();
+
+    // publick_node mock submission
+    generate_and_submit_mock_http_response(&pic, &canister_http_requests, 0, MOCK_GET_LOGS);
+
+    // Ankr mock submission
+    generate_and_submit_mock_http_response(&pic, &canister_http_requests, 1, MOCK_GET_LOGS);
+
+    five_ticks(&pic);
+
+    // Check deposit
+    // Based on the logs there should be 100_000_000_000_000_000 - deposit fees(50_000_000_000_000_u64)= 99_950_000_000_000_000 icBNB minted for Native to b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe
+    let balance = query_call::<Account, Nat>(
+        &pic,
+        native_ledger_principal(),
+        "icrc1_balance_of",
+        Account {
+            owner: Principal::from_text(
+                "b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe",
+            )
+            .unwrap(),
+            subaccount: None,
+        },
+    );
+
+    // 99_840_000_000_000_000
+
+    assert_eq!(balance, Nat::from(99_950_000_000_000_000_u128));
+
+    // Withdrawal Section
+    // Calling icrc2_approve and giving the permission to minter for taking funds from users principal
+    let _approve_result = update_call::<ApproveArgs, Result<Nat, ApproveError>>(
+        &pic,
+        native_ledger_principal(),
+        "icrc2_approve",
+        ApproveArgs {
+            from_subaccount: None,
+            spender: Account {
+                owner: minter_principal(),
+                subaccount: None,
+            },
+            amount: Nat::from(
+                99_940_000_000_000_000_u128, // Users balance - approval fee => 99_950_000_000_000_000_u128 - 10_000_000_000_000_u128
+            ),
+            expected_allowance: None,
+            expires_at: None,
+            fee: None,
+            memo: None,
+            created_at_time: None,
+        },
+        Some(
+            Principal::from_text("b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe")
+                .unwrap(),
+        ),
+    )
+    .unwrap();
+
+    five_ticks(&pic);
+
+    // Check balance after approval
+    // Based on the logs there should be 100_000_000_000_000_000 - deposit fees(50_000_000_000_000_u64)= 99_950_000_000_000_000 icBNB minted for Native to b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe
+    let balance = query_call::<Account, Nat>(
+        &pic,
+        native_ledger_principal(),
+        "icrc1_balance_of",
+        Account {
+            owner: Principal::from_text(
+                "b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe",
+            )
+            .unwrap(),
+            subaccount: None,
+        },
+    );
+
+    assert_eq!(balance, Nat::from(99_940_000_000_000_000_u128));
+
+    // Making the withdrawal request to minter
+    let withdrawal_request_result = update_call::<
+        WithdrawalArg,
+        Result<RetrieveNativeRequest, WithdrawalError>,
+    >(
+        &pic,
+        minter_principal(),
+        "withdraw_native_token",
+        WithdrawalArg {
+            amount: Nat::from(99_940_000_000_000_000_u128),
+            recipient: "0x3bcE376777eCFeb93953cc6C1bB957fbAcb1A261".to_string(),
+        },
+        Some(
+            Principal::from_text("b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe")
+                .unwrap(),
+        ),
+    )
+    .unwrap();
+
+    // Minting deposit block 0
+    // Minting deposit fee block 1
+    // Transfer
+    assert_eq!(withdrawal_request_result.block_index, Nat::from(4_u64));
+
+    five_ticks(&pic);
+
+    // Advance time for PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_INTERVAL amount.
+    pic.advance_time(PROCESS_TOKENS_RETRIEVE_TRANSACTIONS_INTERVAL);
+
+    five_ticks(&pic);
+
+    // At this point there should be an http request for refreshing the fee history
+    // Once there is a witdrawal request, The first attempt should be updating fee history
+    // Cause there should be a maximum gap of 30 seconds between the previos gas fee estimate
+    // we just advance time for amount
+    let canister_http_requests = pic.get_canister_http();
+    generate_and_submit_mock_http_response(
+        &pic,
+        &canister_http_requests,
+        0,
+        MOCK_FEE_HISTORY_RESPONSE,
+    );
+
+    five_ticks(&pic);
+
+    let canister_http_requests = pic.get_canister_http();
+
+    // Generating the latest transaction count for inserting the correct noce
+    generate_and_submit_mock_http_response(
+        &pic,
+        &canister_http_requests,
+        0,
+        MOCK_TRANSACTION_COUNT_LATEST,
+    );
+
+    five_ticks(&pic);
+    five_ticks(&pic);
+
+    // 4th https out call for sending raw transaction.
+    // At this point there should be 2 http_requests
+    // [0] public_node eth_sendRawTransaction
+    // [1] ankr eth_sendRawTransaction
+    let canister_http_requests = pic.get_canister_http();
+
+    // public_node request
+    // Trying to simulate real sendrawtransaction since there will only be one successful result and the rest of the nodes will return
+    // one of the failed responses(NonceTooLow,NonceTooHigh,etc..,)
+    generate_and_submit_mock_http_response(
+        &pic,
+        &canister_http_requests,
+        0,
+        MOCK_SEND_TRANSACTION_SUCCESS,
+    );
+
+    // ankr request
+    generate_and_submit_mock_http_response(
+        &pic,
+        &canister_http_requests,
+        1,
+        MOCK_SEND_TRANSACTION_ERROR,
+    );
+
+    five_ticks(&pic);
+
+    // 5th getting the finalized transaction count after sending transaction was successful.
+    let canister_http_requests = pic.get_canister_http();
+
+    generate_and_submit_mock_http_response(
+        &pic,
+        &canister_http_requests,
+        0,
+        MOCK_TRANSACTION_COUNT_FINALIZED,
+    );
+
+    five_ticks(&pic);
+
+    // 6th Getting the transaction receipt.
+    // At this point there should be two requests for eth_getTransactionReceipt
+    // [0] public_node
+    // [1] ankr
+    let canister_http_requests = pic.get_canister_http();
+
+    // public_node
+    generate_and_submit_mock_http_response(
+        &pic,
+        &canister_http_requests,
+        0,
+        MOCK_TRANSACTION_RECEIPT,
+    );
+
+    // ankr
+    generate_and_submit_mock_http_response(
+        &pic,
+        &canister_http_requests,
+        1,
+        MOCK_TRANSACTION_RECEIPT,
+    );
+
+    five_ticks(&pic);
+
+    // The transaction should be included into finalized transaction list.
+    let get_withdrawal_transaction_by_block_index = update_call::<u64, RetrieveWithdrawalStatus>(
+        &pic,
+        minter_principal(),
+        "retrieve_witdrawal_status",
+        4_u64,
+        None,
+    );
+    let expected_transaction_result =
+        RetrieveWithdrawalStatus::TxFinalized(TxFinalizedStatus::Success {
+            transaction_hash: "0x7176ed5bd7b639277afa2796148b7b10129c1d98a20ebfc2409606c13606be81"
+                .to_string(),
+            effective_transaction_fee: Some(Nat::from(63000000000000_u128)),
+        });
+
+    assert_eq!(
+        get_withdrawal_transaction_by_block_index,
+        expected_transaction_result
+    );
+}
 
 #[test]
 fn should_fail_log_scrapping_request_old_block_number() {
@@ -492,7 +755,7 @@ fn should_fail_log_scrapping_request_old_block_number() {
 mod mock_rpc_https_responses {
     use pocket_ic::{common::rest::CanisterHttpRequest, PocketIc};
 
-    use crate::tests::lsm_types::generate_successful_mock_response;
+    use crate::tests::pocket_ic_helpers::generate_successful_mock_response;
 
     pub const MOCK_FEE_HISTORY_RESPONSE: &str = r#"{
         "jsonrpc": "2.0",

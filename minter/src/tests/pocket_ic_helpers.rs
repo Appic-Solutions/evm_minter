@@ -3,7 +3,14 @@
 // both the deposit and the withdrawal flow to make sure there will be no point of failure in the mentioned flows
 // and concurrent requests;
 
+use std::time::Duration;
+
+use icrc_ledger_types::{
+    icrc1::account::Account,
+    icrc2::approve::{ApproveArgs, ApproveError},
+};
 // For simulating http out calls, we use mock httpout call response.
+use pocket_ic::common::rest::{CanisterHttpReply, CanisterHttpResponse, MockCanisterHttpResponse};
 
 const MINTER_WASM_BYTES: &[u8] =
     include_bytes!("../../../target/wasm32-unknown-unknown/release/evm_minter.wasm");
@@ -12,6 +19,8 @@ const INDEX_WAM_BYTES: &[u8] = include_bytes!("../../../wasm/index_ng_canister_u
 const ARCHIVE_WASM_BYTES: &[u8] = include_bytes!("../../../wasm/archive_canister_u256.wasm.gz");
 const LSM_WASM_BYTES: &[u8] = include_bytes!("../../../wasm/lsm.wasm");
 const EVM_RPC_WASM_BYTES: &[u8] = include_bytes!("../../../wasm/evm_rpc.wasm");
+
+const TWENTY_TRILLIONS: u64 = 20_000_000_000_000;
 
 const FIVE_TRILLIONS: u64 = 5_000_000_000_000;
 
@@ -24,14 +33,20 @@ use evm_rpc_types::InstallArgs;
 use pocket_ic::{PocketIc, PocketIcBuilder, WasmResult};
 
 use super::lsm_types::{InitArg as LsmInitArgs, LSMarg, LedgerManagerInfo};
+
 use crate::{
-    endpoints::{CandidBlockTag, MinterInfo},
+    endpoints::{CandidBlockTag, Erc20Token, MinterInfo},
+    evm_config::EvmNetwork,
     lifecycle::{InitArg, MinterArg, UpgradeArg},
     lsm_client::WasmHash,
-    tests::lsm_types::{CyclesManagement, LedgerSuiteVersion},
+    tests::lsm_types::{
+        AddErc20Arg, AddErc20Error, CyclesManagement, Erc20Contract, LedgerInitArg,
+        LedgerSuiteVersion, ManagedCanisterStatus, ManagedCanisters,
+    },
 };
 use ic_icrc1_index_ng::{IndexArg, InitArg as IndexInitArg};
 use ic_icrc1_ledger::{ArchiveOptions, InitArgs as LedgerInitArgs, LedgerArgument};
+use intialize_minter::create_and_install_minter_plus_dependency_canisters;
 
 #[test]
 fn should_create_and_install_and_upgrade_minter_casniter() {
@@ -169,6 +184,184 @@ fn should_create_and_install_all_minter_dependency_canisters() {
     five_ticks(&pic);
 }
 
+#[test]
+fn should_install_lsm_casniter_and_create_ledger_suite() {
+    let pic = create_pic();
+
+    create_and_install_minter_plus_dependency_canisters(&pic);
+
+    // Withdrawal Section
+    // Calling icrc2_approve and giving the permission to lsm for taking funds from users principal
+    let _approve_result = update_call::<ApproveArgs, Result<Nat, ApproveError>>(
+        &pic,
+        icp_principal(),
+        "icrc2_approve",
+        ApproveArgs {
+            from_subaccount: None,
+            spender: Account {
+                owner: lsm_principal(),
+                subaccount: None,
+            },
+            amount: Nat::from(
+                2_500_000_000_u128, // Users balance - approval fee => 99_950_000_000_000_000_u128 - 10_000_000_000_000_u128
+            ),
+            expected_allowance: None,
+            expires_at: None,
+            fee: None,
+            memo: None,
+            created_at_time: None,
+        },
+        None,
+    )
+    .unwrap();
+
+    five_ticks(&pic);
+
+    let _create_erc20_ls_result = update_call::<AddErc20Arg, Result<(), AddErc20Error>>(
+        &pic,
+        lsm_principal(),
+        "add_erc20_ls",
+        AddErc20Arg {
+            contract: Erc20Contract {
+                chain_id: EvmNetwork::BSCTestnet.chain_id().into(),
+                address: "0xdac17f958d2ee523a2206206994597c13d831ec7".to_string(),
+            },
+            ledger_init_arg: LedgerInitArg {
+                transfer_fee: Nat::from(10_000_u128),
+                decimals: 6,
+                token_name: "USD Tether on icp".to_string(),
+                token_symbol: "icUSDT".to_string(),
+                token_logo: "".to_string(),
+            },
+        },
+        None,
+    );
+
+    five_ticks(&pic);
+
+    // Advance time for 1 hour.
+    pic.advance_time(Duration::from_secs(1 * 60 * 60));
+
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+    five_ticks(&pic);
+
+    let lsm_info = query_call::<(), LedgerManagerInfo>(&pic, lsm_principal(), "get_lsm_info", ());
+
+    let ic_usdt_ledger = match lsm_info
+        .clone()
+        .managed_canisters
+        .into_iter()
+        .find(|ls| {
+            ls.erc20_contract
+                == Erc20Contract {
+                    chain_id: Nat::from(97_u64),
+                    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7".to_string(),
+                }
+        })
+        .unwrap()
+        .ledger
+        .unwrap()
+    {
+        ManagedCanisterStatus::Created { canister_id } => {
+            panic!("Ledger _should be installed at this point")
+        }
+        ManagedCanisterStatus::Installed {
+            canister_id,
+            installed_wasm_hash,
+        } => (canister_id, installed_wasm_hash),
+    };
+
+    let ic_usdt_index = lsm_info
+        .clone()
+        .managed_canisters
+        .into_iter()
+        .find(|ls| {
+            ls.erc20_contract
+                == Erc20Contract {
+                    chain_id: Nat::from(97_u64),
+                    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7".to_string(),
+                }
+        })
+        .unwrap()
+        .index;
+
+    let ic_usdt_archives = lsm_info
+        .clone()
+        .managed_canisters
+        .into_iter()
+        .find(|ls| {
+            ls.erc20_contract
+                == Erc20Contract {
+                    chain_id: Nat::from(97_u64),
+                    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7".to_string(),
+                }
+        })
+        .unwrap()
+        .archives;
+
+    assert_eq!(
+        lsm_info
+            .managed_canisters
+            .into_iter()
+            .find(|ls| ls.erc20_contract
+                == Erc20Contract {
+                    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7".to_string(),
+                    chain_id: 97_u64.into()
+                })
+            .unwrap(),
+        ManagedCanisters {
+            erc20_contract: Erc20Contract {
+                address: "0xdAC17F958D2ee523a2206206994597C13D831ec7".to_string(),
+                chain_id: 97_u64.into()
+            },
+            twin_erc20_token_symbol: "icUSDT".to_string(),
+            ledger: Some(ManagedCanisterStatus::Installed {
+                canister_id: ic_usdt_ledger.0,
+                installed_wasm_hash: ic_usdt_ledger.1
+            }),
+            index: ic_usdt_index,
+            archives: ic_usdt_archives
+        }
+    );
+
+    // icUSDT should be added to minter
+    let minters_erc20_tokens =
+        query_call::<(), MinterInfo>(&pic, minter_principal(), "get_minter_info", ())
+            .supported_erc20_tokens
+            .unwrap();
+    assert_eq!(
+        minters_erc20_tokens
+            .into_iter()
+            .find(|token| token.erc20_contract_address
+                == "0xdAC17F958D2ee523a2206206994597C13D831ec7")
+            .unwrap(),
+        Erc20Token {
+            erc20_token_symbol: "icUSDT".to_string(),
+            erc20_contract_address: "0xdAC17F958D2ee523a2206206994597C13D831ec7".to_string(),
+            ledger_canister_id: ic_usdt_ledger.0
+        }
+    )
+}
+
 pub fn query_call<I, O>(pic: &PocketIc, canister_id: Principal, method: &str, payload: I) -> O
 where
     O: CandidType + for<'a> serde::Deserialize<'a>,
@@ -253,7 +446,7 @@ fn install_minter_canister(pic: &PocketIc, canister_id: Principal) {
         native_symbol: "icTestBNB".to_string(),
         block_height: CandidBlockTag::Latest,
         native_minimum_withdrawal_amount: Nat::from(200_000_000_000_000_u128),
-            native_ledger_transfer_fee: Nat::from(10_000_000_000_000_u128),
+        native_ledger_transfer_fee: Nat::from(10_000_000_000_000_u128),
         next_transaction_nonce: Nat::from(0_u128),
         last_scraped_block_number: Nat::from(45944445_u64),
         min_max_priority_fee_per_gas: Nat::from(3_000_000_000_u128),
@@ -292,6 +485,71 @@ fn install_lsm_canister(pic: &PocketIc, canister_id: Principal) {
         canister_id,
         LSM_WASM_BYTES.to_vec(),
         encode_call_args(lsm_init_bytes).unwrap(),
+        Some(sender_principal()),
+    );
+}
+
+fn create_icp_ledger_canister(pic: &PocketIc) -> Principal {
+    pic.create_canister_with_id(
+        Some(sender_principal()),
+        None,
+        Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap(),
+    )
+    .expect("Should create the casniter")
+}
+
+fn install_icp_ledger_canister(pic: &PocketIc, canister_id: Principal) {
+    use ic_icrc1_ledger::FeatureFlags as LedgerFeatureFlags;
+    use icrc_ledger_types::icrc1::account::Account as LedgerAccount;
+
+    const LEDGER_FEE_SUBACCOUNT: [u8; 32] = [
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0x0f, 0xee,
+    ];
+    const MAX_MEMO_LENGTH: u16 = 80;
+    const ICRC2_FEATURE: LedgerFeatureFlags = LedgerFeatureFlags { icrc2: true };
+
+    const THREE_GIGA_BYTES: u64 = 3_221_225_472;
+
+    let minter_id = minter_principal();
+
+    let ledger_init_bytes = LedgerArgument::Init(LedgerInitArgs {
+        minting_account: LedgerAccount::from(minter_id),
+        fee_collector_account: Some(LedgerAccount {
+            owner: minter_id,
+            subaccount: Some(LEDGER_FEE_SUBACCOUNT),
+        }),
+        initial_balances: vec![(
+            LedgerAccount::from(sender_principal()),
+            Nat::from(5_500_020_000_u128),
+        )],
+        transfer_fee: Nat::from(10_000_u128),
+        decimals: Some(18_u8),
+        token_name: "icTestBNB".to_string(),
+        token_symbol: "icTestBNB".to_string(),
+        metadata: vec![],
+        archive_options: ArchiveOptions {
+            trigger_threshold: 2_000,
+            num_blocks_to_archive: 1_000,
+            node_max_memory_size_bytes: Some(THREE_GIGA_BYTES),
+            max_message_size_bytes: None,
+            controller_id: Principal::from_text("kmcdp-4yaaa-aaaag-ats3q-cai")
+                .unwrap()
+                .into(),
+            more_controller_ids: Some(vec![sender_principal().into()]),
+            cycles_for_archive_creation: Some(2_000_000_000_000_u64),
+            max_transactions_per_response: None,
+        },
+        max_memo_length: Some(MAX_MEMO_LENGTH),
+        feature_flags: Some(ICRC2_FEATURE),
+        maximum_number_of_accounts: None,
+        accounts_overflow_trim_quantity: None,
+    });
+
+    pic.install_canister(
+        canister_id,
+        LEDGER_WASM_BYTES.to_vec(),
+        encode_call_args(ledger_init_bytes).unwrap(),
         Some(sender_principal()),
     );
 }
@@ -430,6 +688,14 @@ pub fn minter_principal() -> Principal {
     Principal::from_text("2ztvj-yaaaa-aaaap-ahiza-cai").unwrap()
 }
 
+pub fn lsm_principal() -> Principal {
+    Principal::from_text("kmcdp-4yaaa-aaaag-ats3q-cai").unwrap()
+}
+
+pub fn icp_principal() -> Principal {
+    Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap()
+}
+
 pub fn native_ledger_principal() -> Principal {
     Principal::from_text("n44gr-qyaaa-aaaam-qbuha-cai").unwrap()
 }
@@ -441,10 +707,92 @@ pub mod intialize_minter {
     use super::*;
 
     pub fn create_and_install_minter_plus_dependency_canisters(pic: &PocketIc) {
+        // Create and install icp ledger
+        let icp_cansiter_id = create_icp_ledger_canister(&pic);
+        pic.add_cycles(icp_cansiter_id, TWO_TRILLIONS.into());
+        install_icp_ledger_canister(&pic, icp_cansiter_id);
+        five_ticks(&pic);
+
         // Create and install lsm casniter
         let lsm_casniter_id = create_lsm_canister(&pic);
-        pic.add_cycles(lsm_casniter_id, TWO_TRILLIONS.into());
+        pic.add_cycles(lsm_casniter_id, TWENTY_TRILLIONS.into());
         install_lsm_canister(&pic, lsm_casniter_id);
+        five_ticks(&pic);
+
+        // Withdrawal Section
+        // Calling icrc2_approve and giving the permission to lsm for taking funds from users principal
+        let _approve_result = update_call::<ApproveArgs, Result<Nat, ApproveError>>(
+            &pic,
+            icp_principal(),
+            "icrc2_approve",
+            ApproveArgs {
+                from_subaccount: None,
+                spender: Account {
+                    owner: lsm_principal(),
+                    subaccount: None,
+                },
+                amount: Nat::from(
+                    2_500_000_000_u128, // Users balance - approval fee => 99_950_000_000_000_000_u128 - 10_000_000_000_000_u128
+                ),
+                expected_allowance: None,
+                expires_at: None,
+                fee: None,
+                memo: None,
+                created_at_time: None,
+            },
+            None,
+        )
+        .unwrap();
+
+        five_ticks(&pic);
+
+        // Add icUSDC to lsm
+        let _result = update_call::<AddErc20Arg, Result<(), AddErc20Error>>(
+            &pic,
+            lsm_principal(),
+            "add_erc20_ls",
+            AddErc20Arg {
+                contract: Erc20Contract {
+                    chain_id: EvmNetwork::BSCTestnet.chain_id().into(),
+                    address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".to_string(),
+                },
+                ledger_init_arg: LedgerInitArg {
+                    transfer_fee: Nat::from(10_000_u128),
+                    decimals: 6,
+                    token_name: "USD Coin on icp".to_string(),
+                    token_symbol: "icUSDC".to_string(),
+                    token_logo: "".to_string(),
+                },
+            },
+            None,
+        )
+        .unwrap();
+
+        five_ticks(&pic);
+
+        // Advance time for 1 hour.
+        pic.advance_time(Duration::from_secs(1 * 60 * 60));
+
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
+        five_ticks(&pic);
         five_ticks(&pic);
 
         // Create and install evm rpc canister
@@ -470,5 +818,22 @@ pub mod intialize_minter {
         pic.add_cycles(minter_id, 1_000_000_000_000);
         install_minter_canister(&pic, minter_id);
         five_ticks(&pic);
+    }
+}
+
+pub fn generate_successful_mock_response(
+    subnet_id: Principal,
+    request_id: u64,
+    body: Vec<u8>,
+) -> MockCanisterHttpResponse {
+    MockCanisterHttpResponse {
+        subnet_id,
+        request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: body.to_vec(),
+        }),
+        additional_responses: vec![],
     }
 }
