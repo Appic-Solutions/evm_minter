@@ -148,7 +148,7 @@ async fn mint() {
                         Ok(Ok(block_index)) => {
                             log!(
                                 INFO,
-                                "Minted deposit fees {} in block {}",
+                                "Minted deposit fee {} in fee collecting account in block {}",
                                 deposit_fee,
                                 block_index
                             );
@@ -190,10 +190,9 @@ async fn mint() {
         });
         log!(
             INFO,
-            "Minted {} {token_symbol} to {} in block {block_index} deducting {:?} in fees",
+            "Minted {} {token_symbol} to {} in block {block_index} ",
             amount,
             event.principal(),
-            deposit_native_fee
         );
         // minting succeeded, defuse guard
         ScopeGuard::into_inner(prevent_double_minting_guard);

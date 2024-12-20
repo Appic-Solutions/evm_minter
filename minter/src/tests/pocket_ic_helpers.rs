@@ -281,7 +281,7 @@ fn should_install_lsm_casniter_and_create_ledger_suite() {
         .ledger
         .unwrap()
     {
-        ManagedCanisterStatus::Created { canister_id } => {
+        ManagedCanisterStatus::Created { canister_id: _ } => {
             panic!("Ledger _should be installed at this point")
         }
         ManagedCanisterStatus::Installed {
@@ -524,7 +524,7 @@ fn install_icp_ledger_canister(pic: &PocketIc, canister_id: Principal) {
             Nat::from(5_500_020_000_u128),
         )],
         transfer_fee: Nat::from(10_000_u128),
-        decimals: Some(18_u8),
+        decimals: Some(8_u8),
         token_name: "icTestBNB".to_string(),
         token_symbol: "icTestBNB".to_string(),
         metadata: vec![],
@@ -717,81 +717,6 @@ pub mod intialize_minter {
         let lsm_casniter_id = create_lsm_canister(&pic);
         pic.add_cycles(lsm_casniter_id, TWENTY_TRILLIONS.into());
         install_lsm_canister(&pic, lsm_casniter_id);
-        five_ticks(&pic);
-
-        // Withdrawal Section
-        // Calling icrc2_approve and giving the permission to lsm for taking funds from users principal
-        let _approve_result = update_call::<ApproveArgs, Result<Nat, ApproveError>>(
-            &pic,
-            icp_principal(),
-            "icrc2_approve",
-            ApproveArgs {
-                from_subaccount: None,
-                spender: Account {
-                    owner: lsm_principal(),
-                    subaccount: None,
-                },
-                amount: Nat::from(
-                    2_500_000_000_u128, // Users balance - approval fee => 99_950_000_000_000_000_u128 - 10_000_000_000_000_u128
-                ),
-                expected_allowance: None,
-                expires_at: None,
-                fee: None,
-                memo: None,
-                created_at_time: None,
-            },
-            None,
-        )
-        .unwrap();
-
-        five_ticks(&pic);
-
-        // Add icUSDC to lsm
-        let _result = update_call::<AddErc20Arg, Result<(), AddErc20Error>>(
-            &pic,
-            lsm_principal(),
-            "add_erc20_ls",
-            AddErc20Arg {
-                contract: Erc20Contract {
-                    chain_id: EvmNetwork::BSCTestnet.chain_id().into(),
-                    address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".to_string(),
-                },
-                ledger_init_arg: LedgerInitArg {
-                    transfer_fee: Nat::from(10_000_u128),
-                    decimals: 6,
-                    token_name: "USD Coin on icp".to_string(),
-                    token_symbol: "icUSDC".to_string(),
-                    token_logo: "".to_string(),
-                },
-            },
-            None,
-        )
-        .unwrap();
-
-        five_ticks(&pic);
-
-        // Advance time for 1 hour.
-        pic.advance_time(Duration::from_secs(1 * 60 * 60));
-
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
-        five_ticks(&pic);
         five_ticks(&pic);
         five_ticks(&pic);
 

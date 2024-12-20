@@ -63,7 +63,7 @@ impl LogParser for ReceivedDepositLogParser {
         // );
         // Indexed topics are as follow
         // (
-        //     Event Topic,
+        //     Event Topic = RECEIVED_DEPOSITED_TOKEN_EVENT_TOPIC,
         //     Indexed contract_address of the token(in case of native token its 0x000000000000000000000000000),
         //     Indexed amount of token(value),
         //     Indexed principalId
