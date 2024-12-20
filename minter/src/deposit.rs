@@ -146,7 +146,12 @@ async fn mint() {
                         .await
                     {
                         Ok(Ok(block_index)) => {
-                            log!(INFO, "Minted {} in block {}", deposit_fee, block_index);
+                            log!(
+                                INFO,
+                                "Minted deposit fees {} in block {}",
+                                deposit_fee,
+                                block_index
+                            );
                         }
                         Ok(Err(err)) => {
                             log!(

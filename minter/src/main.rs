@@ -7,7 +7,7 @@ use evm_minter::endpoints::events::{
 };
 
 use evm_minter::endpoints::{
-    self, AddErc20Token, FeeError, Icrc28TrustedOriginsResponse, LedgerError, RequestScrapingError,
+    self, AddErc20Token, FeeError, Icrc28TrustedOriginsResponse, RequestScrapingError,
 };
 use evm_minter::endpoints::{
     Eip1559TransactionPrice, Eip1559TransactionPriceArg, Erc20Balance, GasFeeEstimate, MinterInfo,
@@ -44,7 +44,6 @@ use evm_minter::{
 };
 use ic_canister_log::log;
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
-use proptest::num::f32::ZERO;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::time::Duration;
@@ -222,6 +221,8 @@ async fn get_minter_info() -> MinterInfo {
             helper_smart_contract_address: s.helper_contract_address.map(|a| a.to_string()),
             supported_erc20_tokens,
             minimum_withdrawal_amount: Some(s.native_minimum_withdrawal_amount.into()),
+            deposit_native_fee: s.deposit_native_fee.map(|fee| fee.into()),
+            withdrawal_native_fee: s.withdrawal_native_fee.map(|fee| fee.into()),
             block_height: Some(s.block_height.into()),
             last_observed_block_number: s.last_observed_block_number.map(|n| n.into()),
             native_balance: Some(s.native_balance.native_balance().into()),
@@ -319,8 +320,8 @@ async fn withdraw_native_token(
                 .expect("Failed to calculate withdrawal fee");
             log!(
                 INFO,
-                "[withdraw]: Transferring Withdrawal fee {:?}",
-                withdrawal_fee
+                "[withdraw]: Transferring Withdrawal fee - ledger transfer fee {:?}",
+                transfer_amount
             );
             match client
                 .trasnfer_withdrawal_fee(caller.into(), transfer_amount)

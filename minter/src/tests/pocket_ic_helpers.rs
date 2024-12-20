@@ -56,8 +56,10 @@ fn should_create_and_install_and_upgrade_minter_casniter() {
             helper_smart_contract_address: Some(
                 "0x733a1BEeF5A02990aAD285d7ED93fc1b622EeF1d".to_string()
             ),
+            deposit_native_fee: Some(Nat::from(50_000_000_000_000_u64)),
+            withdrawal_native_fee: Some(Nat::from(100_000_000_000_000_u64)),
             supported_erc20_tokens: Some(vec![]),
-            minimum_withdrawal_amount: Some(Nat::from(100000000000000_u128)),
+            minimum_withdrawal_amount: Some(Nat::from(200_000_000_000_000_u64)),
             block_height: Some(CandidBlockTag::Latest),
             last_observed_block_number: None,
             native_balance: Some(Nat::from(0_u128)),
@@ -71,7 +73,7 @@ fn should_create_and_install_and_upgrade_minter_casniter() {
     );
 
     let upgrade_args = MinterArg::UpgradeArg(UpgradeArg {
-        native_minimum_withdrawal_amount: Some(Nat::from(200_000_000_000_000_u128)),
+        native_minimum_withdrawal_amount: Some(Nat::from(400_000_000_000_000_u128)),
         native_ledger_transfer_fee: None,
         next_transaction_nonce: None,
         last_scraped_block_number: Some(Nat::from(100935911_u128)),
@@ -79,8 +81,8 @@ fn should_create_and_install_and_upgrade_minter_casniter() {
         helper_contract_address: None,
         block_height: None,
         min_max_priority_fee_per_gas: None,
-        deposit_native_fee: None,
-        withdrawal_native_fee: None,
+        deposit_native_fee: Some(Nat::from(100_000_000_000_000_u64)),
+        withdrawal_native_fee: Some(Nat::from(200_000_000_000_000_u64)),
     });
     let upgrade_bytes = candid::encode_one(upgrade_args).unwrap();
 
@@ -99,7 +101,9 @@ fn should_create_and_install_and_upgrade_minter_casniter() {
                 "0x733a1BEeF5A02990aAD285d7ED93fc1b622EeF1d".to_string()
             ),
             supported_erc20_tokens: Some(vec![]),
-            minimum_withdrawal_amount: Some(Nat::from(200000000000000_u128)),
+            minimum_withdrawal_amount: Some(Nat::from(400_000_000_000_000_u128)),
+            deposit_native_fee: Some(Nat::from(100_000_000_000_000_u64)),
+            withdrawal_native_fee: Some(Nat::from(200_000_000_000_000_u64)),
             block_height: Some(CandidBlockTag::Latest),
             last_observed_block_number: None,
             native_balance: Some(Nat::from(0_u128)),
@@ -248,14 +252,14 @@ fn install_minter_canister(pic: &PocketIc, canister_id: Principal) {
         native_index_id: "eysav-tyaaa-aaaap-akqfq-cai".parse().unwrap(),
         native_symbol: "icTestBNB".to_string(),
         block_height: CandidBlockTag::Latest,
-        native_minimum_withdrawal_amount: Nat::from(100_000_000_000_000_u128),
-        native_ledger_transfer_fee: Nat::from(10_000_000_000_000_u128),
+        native_minimum_withdrawal_amount: Nat::from(200_000_000_000_000_u128),
+            native_ledger_transfer_fee: Nat::from(10_000_000_000_000_u128),
         next_transaction_nonce: Nat::from(0_u128),
         last_scraped_block_number: Nat::from(45944445_u64),
         min_max_priority_fee_per_gas: Nat::from(3_000_000_000_u128),
         ledger_suite_manager_id: "kmcdp-4yaaa-aaaag-ats3q-cai".parse().unwrap(),
-        deposit_native_fee: Nat::from(0_u64),
-        withdrawal_native_fee: Nat::from(0_u64),
+        deposit_native_fee: Nat::from(50_000_000_000_000_u64),
+        withdrawal_native_fee: Nat::from(100_000_000_000_000_u64),
     });
     let init_bytes = candid::encode_one(init_args).unwrap();
 

@@ -321,7 +321,7 @@ impl State {
                 },
             ),
             None,
-            "attempted to mint ckETH twice for the same event {source:?}"
+            "attempted to mint native twice for the same event {source:?}"
         );
     }
 

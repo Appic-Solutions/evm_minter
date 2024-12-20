@@ -74,6 +74,8 @@ pub struct MinterInfo {
     pub helper_smart_contract_address: Option<String>,
     pub supported_erc20_tokens: Option<Vec<Erc20Token>>,
     pub minimum_withdrawal_amount: Option<Nat>,
+    pub deposit_native_fee: Option<Nat>,
+    pub withdrawal_native_fee: Option<Nat>,
     pub block_height: Option<CandidBlockTag>,
     pub last_observed_block_number: Option<Nat>,
     pub native_balance: Option<Nat>,

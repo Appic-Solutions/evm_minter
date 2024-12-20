@@ -109,7 +109,7 @@ fn should_deposit_and_withdrawal_native() {
     five_ticks(&pic);
 
     // Check deposit
-    // Based on the logs there should be 100000000000000000 icBNB minted for Native to b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe
+    // Based on the logs there should be 100_000_000_000_000_000 - deposit fees(50_000_000_000_000_u64)= 99_950_000_000_000_000 icBNB minted for Native to b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe
     let balance = query_call::<Account, Nat>(
         &pic,
         native_ledger_principal(),
@@ -123,7 +123,9 @@ fn should_deposit_and_withdrawal_native() {
         },
     );
 
-    assert_eq!(balance, Nat::from(100000000000000000_u128));
+    // 99_840_000_000_000_000
+
+    assert_eq!(balance, Nat::from(99_950_000_000_000_000_u128));
 
     // Withdrawal Section
     // Calling icrc2_approve and giving the permission to minter for taking funds from users principal
@@ -138,8 +140,7 @@ fn should_deposit_and_withdrawal_native() {
                 subaccount: None,
             },
             amount: Nat::from(
-                100_000_000_000_000_000_u128, // .checked_sub(10_000_000_000_000_u128)
-                                              // .unwrap(),
+                99_940_000_000_000_000_u128, // Users balance - approval fee => 99_950_000_000_000_000_u128 - 10_000_000_000_000_u128
             ),
             expected_allowance: None,
             expires_at: None,
@@ -156,8 +157,25 @@ fn should_deposit_and_withdrawal_native() {
 
     five_ticks(&pic);
 
+    // Check balance after approval
+    // Based on the logs there should be 100_000_000_000_000_000 - deposit fees(50_000_000_000_000_u64)= 99_950_000_000_000_000 icBNB minted for Native to b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe
+    let balance = query_call::<Account, Nat>(
+        &pic,
+        native_ledger_principal(),
+        "icrc1_balance_of",
+        Account {
+            owner: Principal::from_text(
+                "b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe",
+            )
+            .unwrap(),
+            subaccount: None,
+        },
+    );
+
+    assert_eq!(balance, Nat::from(99_940_000_000_000_000_u128));
+
     // Making the withdrawal request to minter
-    let _withdrawal_request_result = update_call::<
+    let withdrawal_request_result = update_call::<
         WithdrawalArg,
         Result<RetrieveNativeRequest, WithdrawalError>,
     >(
@@ -165,18 +183,20 @@ fn should_deposit_and_withdrawal_native() {
         minter_principal(),
         "withdraw_native_token",
         WithdrawalArg {
-            amount: Nat::from(
-                100_000_000_000_000_000_u128
-                    .checked_sub(10_000_000_000_000_u128)
-                    .unwrap(),
-            ),
+            amount: Nat::from(99_940_000_000_000_000_u128),
             recipient: "0x3bcE376777eCFeb93953cc6C1bB957fbAcb1A261".to_string(),
         },
         Some(
             Principal::from_text("b4any-vxcgx-dm654-xhumb-4pl7k-5kysk-qnjlt-w7hcb-2hd2h-ttzpz-fqe")
                 .unwrap(),
         ),
-    );
+    )
+    .unwrap();
+
+    // Minting deposit block 0
+    // Minting deposit fee block 1
+    // Transfer
+    assert_eq!(withdrawal_request_result.block_index, Nat::from(4_u64));
 
     five_ticks(&pic);
 
@@ -279,12 +299,12 @@ fn should_deposit_and_withdrawal_native() {
         &pic,
         minter_principal(),
         "retrieve_witdrawal_status",
-        2_u64,
+        4_u64,
         None,
     );
     let expected_transaction_result =
         RetrieveWithdrawalStatus::TxFinalized(TxFinalizedStatus::Success {
-            transaction_hash: "0x7a2b7ec2713dd7d5b6539ff683fab66003ad76b9920a9da309558b2e2f8ab3c8"
+            transaction_hash: "0x7176ed5bd7b639277afa2796148b7b10129c1d98a20ebfc2409606c13606be81"
                 .to_string(),
             effective_transaction_fee: Some(Nat::from(63000000000000_u128)),
         });
@@ -638,7 +658,7 @@ mod mock_rpc_https_responses {
             "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
             "status": "0x1",
             "to": "0x3bce376777ecfeb93953cc6c1bb957fbacb1a261",
-            "transactionHash": "0x7a2b7ec2713dd7d5b6539ff683fab66003ad76b9920a9da309558b2e2f8ab3c8",
+            "transactionHash": "0x7176ed5bd7b639277afa2796148b7b10129c1d98a20ebfc2409606c13606be81",
             "transactionIndex": "0x3",
             "type": "0x2"
         }
@@ -656,7 +676,7 @@ mod mock_rpc_https_responses {
     pub const MOCK_SEND_TRANSACTION_SUCCESS: &str = r#"{
         "jsonrpc": "2.0",
         "id": 1,
-        "result": "0x7a2b7ec2713dd7d5b6539ff683fab66003ad76b9920a9da309558b2e2f8ab3c8"
+        "result": "0x7176ed5bd7b639277afa2796148b7b10129c1d98a20ebfc2409606c13606be81"
     }"#;
 
     pub fn generate_and_submit_mock_http_response(
